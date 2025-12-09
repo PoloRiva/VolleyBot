@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏐 BeachVolley Group</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons for visual flair -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Custom scrollbar for a polished look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased pb-12">
+
+    <!-- SECTION 1: Hero / Title (50% Screen Height) -->
+    <header class="h-[50vh] min-h-[300px] flex flex-col items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-700 text-white p-6 text-center shadow-lg relative overflow-hidden">
+        <!-- Decorative background circles -->
+        <div class="absolute top-0 left-0 w-64 h-64 bg-white opacity-5 rounded-full -translate-x-1/2 -translate-y-1/2"></div>
+        <div class="absolute bottom-0 right-0 w-96 h-96 bg-white opacity-5 rounded-full translate-x-1/3 translate-y-1/3"></div>
+
+        <div class="z-10 fade-in">
+            <span class="uppercase tracking-widest text-xs font-semibold opacity-80 mb-2 block">Milano 2026</span>
+            <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight mb-4">
+                Beach Volley <span class="text-indigo-200">Group</span>
+            </h1>
+            <p class="text-lg md:text-xl opacity-90 max-w-md mx-auto">
+                The official hub for our highly important rules, off-topics questions, and indian lunch.
+            </p>
+        </div>
+    </header>
+
+    <main class="max-w-3xl mx-auto px-4 -mt-8 relative z-20">
+
+        <!-- SECTION 2: Info Buttons (Modal Triggers) -->
+        <section id="info-section" class="grid grid-cols-2 gap-4 mb-12">
+            <!-- Buttons injected by JS -->
+        </section>
+
+        <!-- SECTION 3: News Feed -->
+        <section>
+            <div class="flex items-center gap-2 mb-6">
+                <i data-lucide="newspaper" class="text-indigo-600"></i>
+                <h2 class="text-2xl font-bold text-slate-800">Latest News</h2>
+            </div>
+
+            <div id="news-section" class="space-y-4">
+                <!-- News items injected by JS -->
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center text-slate-400 text-sm mt-16 pb-8">
+        <p>&copy; Built for the homies.</p>
+    </footer>
+
+    <!-- SHARED MODAL COMPONENT -->
+    <div id="modal-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 transition-opacity duration-300" onclick="closeModal(event)">
+        <div id="modal-content" class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col transform scale-95 opacity-0 transition-all duration-300" onclick="event.stopPropagation()">
+
+            <!-- Modal Header -->
+            <div class="p-6 border-b border-slate-100 flex justify-between items-start">
+                <div>
+                    <span id="modal-date" class="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-1 block"></span>
+                    <h3 id="modal-title" class="text-2xl font-bold text-slate-900 leading-tight"></h3>
+                </div>
+                <button onclick="closeModal()" class="p-2 -mr-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body (Scrollable) -->
+            <div class="p-6 overflow-y-auto">
+                <p id="modal-desc" class="text-lg text-slate-600 mb-6 italic border-l-4 border-indigo-200 pl-4"></p>
+                <div id="modal-body" class="prose prose-slate text-slate-700 leading-relaxed space-y-4">
+                    <!-- Full text goes here -->
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl">
+                <button onclick="closeModal()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-xl shadow-md active:scale-[0.98] transition-transform">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Icons
+        lucide.createIcons();
+
+        // --- DATA CONTENT (EDIT THIS SECTION) ---
+        const infoButtons = [
+            {
+                id: 'rules',
+                title: 'The List',
+                icon: 'scroll-text',
+                color: 'bg-white',
+                date: 'Updated: Jan 2026',
+                description: 'The definitive guide on how to join the list and play.',
+                content: `
+                    <h4 class="text-xl font-bold mb-4 border-b pb-2 text-slate-800">List 101: The Basics</h4>
+                    <!-- Emphasis section for key actions -->
+                    <div class="space-y-4 mb-8 p-6 bg-indigo-50 border-l-4 border-indigo-500 rounded-r-lg">
+                        <div class="flex items-center text-xl font-bold text-indigo-700">
+                            <i data-lucide="list-checks" class="w-6 h-6 mr-3 flex-shrink-0"></i>
+                            <span>Add yourself to the list</span>
+                        </div>
+                        <div class="flex items-center text-xl font-bold text-indigo-700">
+                            <i data-lucide="smile" class="w-6 h-6 mr-3 flex-shrink-0"></i>
+                            <span>Confirm your spot (and payment) with an emoji</span>
+                        </div>
+                        <div class="flex items-center text-xl font-bold text-indigo-700">
+                            <i data-lucide="play" class="w-6 h-6 mr-3 flex-shrink-0"></i>
+                            <span>Come to play!</span>
+                        </div>
+                    </div>
+
+                    <h4 class="text-xl font-bold mb-4 border-b pb-2 text-slate-800">The Timeline</h4>
+                    <div class="relative pl-6 space-y-8 border-l-2 border-slate-200 mb-8">
+
+                        <!-- Step 1: List ONLINE -->
+                        <div class="relative">
+                            <div class="absolute -left-3.5 -top-1 w-7 h-7 bg-green-500 rounded-full flex items-center justify-center ring-4 ring-white shadow-md">
+                                <i data-lucide="calendar-check" class="w-4 h-4 text-white"></i>
+                            </div>
+                            <p class="text-sm font-semibold text-green-600 uppercase tracking-wider">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Tuesday 19:00</p>
+                            <p class="text-slate-700 mt-1">The list goes <strong class="text-green-700">ONLINE</strong>. Anyone can add themself and guests.</p>
+                        </div>
+
+                        <!-- Step 2: The CUTOFF -->
+                        <div class="relative">
+                            <div class="absolute -left-3.5 -top-1 w-7 h-7 bg-red-500 rounded-full flex items-center justify-center ring-4 ring-white shadow-md">
+                                <i data-lucide="timer" class="w-4 h-4 text-white"></i>
+                            </div>
+                            <p class="text-sm font-semibold text-red-600 uppercase tracking-wider">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Friday 20:00</p>
+                            <p class="text-slate-700 mt-1">The <strong class="text-red-700">CUTOFF</strong> time. Confirmed players rise to the top of the list.</p>
+                        </div>
+
+                        <!-- Step 3: Cancellations -->
+                        <div class="relative">
+                            <div class="absolute -left-3.5 -top-1 w-7 h-7 bg-amber-500 rounded-full flex items-center justify-center ring-4 ring-white shadow-md">
+                                <i data-lucide="calendar-x" class="w-4 h-4 text-white"></i>
+                            </div>
+                            <p class="text-sm font-semibold text-amber-600 uppercase tracking-wider">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Friday 24:00</p>
+                            <p class="text-slate-700 mt-1">Reservations may be cancelled if the number of confirmed players doesn't fully fill them.</p>
+                        </div>
+
+                        <!-- Step 4: Play Time -->
+                        <div class="relative">
+                            <div class="absolute -left-3.5 -top-1 w-7 h-7 bg-indigo-500 rounded-full flex items-center justify-center ring-4 ring-white shadow-md">
+                                <i data-lucide="map-pin" class="w-4 h-4 text-white"></i>
+                            </div>
+                            <p class="text-sm font-semibold text-indigo-600 uppercase tracking-wider">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sunday 11:30</p>
+                            <p class="text-slate-700 mt-1">
+                                Play time. Try to be at 
+                                <a href="https://maps.app.goo.gl/4GT1LKd8QyXGDx7a7" class="text-blue-600 hover:text-blue-800 font-semibold border-b-2 border-blue-600/50 hover:border-blue-800 transition duration-300 ease-in-out" target="_blank">Crespi</a> 
+                                15 minutes before.
+                            </p>
+                        </div>
+
+                    </div>
+
+
+                    <h4 class="text-xl font-bold mb-4 border-b pb-2 text-slate-800">List Rules</h4>
+                    <ol class="list-decimal list-inside space-y-3">
+                        <li class="pl-2">The list follows the "first comes, first served" basis.</li>
+                        <li class="pl-2">People from the group have priority.</li>
+                        <li class="pl-2">Adding yourself to the list reserves you a spot only up to the <strong class="text-red-700">CUTOFF</strong>.</li>
+                        <li class="pl-2">Confirm your assistance (and payment) by adding an emoji next to your name.</li>
+                        <li class="pl-2">At <strong class="text-red-700">CUTOFF</strong>, confirmed players will rise to the top of the list.</li>
+                        <li class="pl-2">After the <strong class="text-red-700">CUTOFF</strong>, any player that confirms rises in the list.</li>
+                        <li class="pl-2">After the <strong class="text-red-700">CUTOFF</strong>, people from the group no longer have priority over guests.</li>
+                        <li class="pl-2">Only the top confirmed players will be accounted to play. The rest did not make it.</li>
+                        <li class="pl-2">The final number of players depends on how many fields we can fill. There are 3 fields in total, each for 8 players.</li>
+                        <li class="pl-2">If you want to have guests, add them to the bottom of the list (the backup).</li>
+                        <li class="pl-2">You must play on the same team as your guests.</li>
+                        <li class="pl-2">Your guest has to play at least 3 times before you can request to add him/her to the group.</li>
+                        <li class="pl-2">If you withdraw your name from the list after you confirmed, you may still have to pay if no replacement is found.</li>
+                        <li class="pl-2">Be kind, use common sense.</li>
+                    </ol>
+
+                    <div class="text-center mt-6 p-3 bg-yellow-100 rounded-lg text-yellow-800 text-sm italic font-medium">
+                        <i data-lucide="sparkles" class="w-4 h-4 inline mr-1"></i>
+                        There are exceptions.
+                    </div>
+                `
+            },
+            {
+                id: 'bot',
+                title: 'Using the bot',
+                icon: 'bot',
+                color: 'bg-white',
+                date: 'The world can rest',
+                description: 'VolleyBot, how to use it and a few words from itself',
+                content: `
+                    <img class="w-full h-auto max-w-lg" src="/Website/bot_profilePic_512.png" alt="picture of VolleyBot"></>
+                    <p class="text-center"><strong>VolleyBot</strong></p>
+                    <p>VolleyBot will manage the list from now on. No need to copy edit and paste any more. No race conflicts when multiple people are modifying the list. Everything will be done by VolleyBot.</p>
+                    <p><strong>Chat commands:</strong></p>
+                    <div class="font-mono bg-gray-900 text-green-400 p-4 rounded-lg">
+                        <div class="text-white"><span class="text-green-500">$</span>/addme</div>
+                        <div class="ml-4 text-gray-400">Adds the player to the list.</div>
+
+                        <div class="mt-2 text-white"><span class="text-green-500">$</span>/confirm &lt;emoji&gt;</div>
+                        <div class="ml-4 text-gray-400">Confirms the player assistance & payment. </div>
+
+                        <div class="mt-2 text-white"><span class="text-green-500">$</span>/remove</div>
+                        <div class="ml-4 text-gray-400">Removes the player from the list.</div>
+
+                        <div class="mt-2 text-white"><span class="text-green-500">$</span>/addbkp &lt;name&gt;</div>
+                        <div class="ml-4 text-gray-400">Adds a bkp to the list.</div>
+
+                        <div class="mt-2 text-white"><span class="text-green-500">$</span>/confirmbkp &lt;name&gt; &lt;emoji&gt;</div>
+                        <div class="ml-4 text-gray-400">Confirms the bkp assistance & payment.</div>
+
+                        <div class="mt-2 text-white"><span class="text-green-500">$</span>/changenickname &lt;nickname&gt;</div>
+                        <div class="ml-4 text-gray-400">Changes the user nickname.</div>
+
+                        <div class="mt-2 text-white"><span class="text-green-500">$</span>/stats</div>
+                        <div class="ml-4 text-gray-400">Show the user stats.</div>
+
+                        <div class="mt-2 text-white"><span class="text-green-500">$</span>/complaint <text></div>
+                        <div class="ml-4 text-gray-400">Sends a formal complaint to the admins.</div>
+
+                        <div class="mt-2 text-white"><span class="text-green-500">$</span>/indianpoll</div>
+                        <div class="ml-4 text-gray-400">Sends the indian menu poll.</div>
+
+                        <div class="mt-2 text-white"><span class="text-green-500">$</span>/help</div>
+                        <div class="ml-4 text-gray-400">Prints this list of commands.</div>
+
+                        <p>&nbsp;</p>
+                        <p class="italic">Any text containing spaces should be wrapped on double quotes, example:</p>
+                        <div class="mt-2 text-white"><span class="text-green-500">$</span>/addbkp "Volley Bot"</div>
+                    </div>
+
+                    <p><span class="italic">"When I got the call I didn't expected it was for managing the BeachVolley Group ! I dropped my sorting algorithm job and came right away. I'm electric about the opportunity. That LIST is never going to disappoint 🦾"</span> - <strong>VolleyBot</strong></p>
+                `
+            },
+            {
+                id: 'links',
+                title: 'Support Us',
+                icon: 'hand-fist',
+                color: 'bg-white',
+                date: 'Helping us helps you',
+                description: 'It is a win-win-win scenario.',
+                content: `
+                    <p>We do not profit from doing this. And while we do not accept tips, you can help us by using any of our referral links:</p>
+                    <div class="p-4 sm:p-8 bg-gray-50 dark:bg-gray-800">
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+
+                            <a href="https://americanexpress.com/it-it/referral/gold-credit?ref=pAOLORohv1&XL=MNTNS"
+                            target="_blank"
+                            class="flex items-center justify-center space-x-2 w-full
+                            text-center py-3 px-6 border border-gray-300 rounded-lg shadow-sm
+                            text-base font-medium text-gray-700 bg-white hover:bg-gray-50
+                            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
+                            transition ease-in-out duration-150">
+                                <img height="32" width="32" src="https://cdn.simpleicons.org/americanexpress/006fcf"/>
+                                <span>American Express</span>
+                            </a>
+
+                            <a href="https://revolut.com/referral/?referral-code=paolof9qi4!DEC1-25-AR-L1&geo-redirect"
+                            target="_blank"
+                            class="flex items-center justify-center space-x-2 w-full
+                            text-center py-3 px-6 border border-gray-300 rounded-lg shadow-sm
+                            text-base font-medium text-gray-700 bg-white hover:bg-gray-50
+                            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
+                            transition ease-in-out duration-150">
+                                <img height="32" width="32" src="https://cdn.simpleicons.org/revolut/191C1F"/>
+                                <span>Revolut</span>
+                            </a>
+
+                            <a href="https://wise.com/invite/ahpc/paolor216"
+                            target="_blank"
+                            class="flex items-center justify-center space-x-2 w-full
+                            text-center py-3 px-6 border border-gray-300 rounded-lg shadow-sm
+                            text-base font-medium text-gray-700 bg-white hover:bg-gray-50
+                            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
+                            transition ease-in-out duration-150">
+                                <img height="32" width="32" src="https://cdn.simpleicons.org/wise/9FE870"/>
+                                <span>Wise</span>
+                            </a>
+
+                            <a href="https://n26.com/r/paolofrr7528"
+                            target="_blank"
+                            class="flex items-center justify-center space-x-2 w-full
+                            text-center py-3 px-6 border border-gray-300 rounded-lg shadow-sm
+                            text-base font-medium text-gray-700 bg-white hover:bg-gray-50
+                            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
+                            transition ease-in-out duration-150">
+                                <img height="32" width="32" src="https://cdn.simpleicons.org/n26/48AC98"/>
+                                <span>N26</span>
+                            </a>
+
+                            <a href="https://coinbase.com/join/Y8VSCJE?src=android-link"
+                            target="_blank"
+                            class="flex items-center justify-center space-x-2 w-full
+                            text-center py-3 px-6 border border-gray-300 rounded-lg shadow-sm
+                            text-base font-medium text-gray-700 bg-white hover:bg-gray-50
+                            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
+                            transition ease-in-out duration-150">
+                                <img height="32" width="32" src="https://cdn.simpleicons.org/coinbase/0052FF"/>
+                                <span>Coinbase</span>
+                            </a>
+
+                            <a href="https://www.binance.com/activity/referral-entry/CPA?ref=CPA_00ORVKT7CF"
+                            target="_blank"
+                            class="flex items-center justify-center space-x-2 w-full
+                            text-center py-3 px-6 border border-gray-300 rounded-lg shadow-sm
+                            text-base font-medium text-gray-700 bg-white hover:bg-gray-50
+                            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
+                            transition ease-in-out duration-150">
+                                <img height="32" width="32" src="https://cdn.simpleicons.org/binance/F0B90B"/>
+                                <span>Binance</span>
+                            </a>
+
+                            <a href="https://web.satispay.com/promocode/f5feb0e8-9bbd-471a-9e7e-1dcef5df7917"
+                            target="_blank"
+                            class="flex items-center justify-center space-x-2 w-full
+                            text-center py-3 px-6 border border-gray-300 rounded-lg shadow-sm
+                            text-base font-medium text-gray-700 bg-white hover:bg-gray-50
+                            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
+                            transition ease-in-out duration-150">
+                                <i data-lucide="circle-question-mark" class="text-red-400"></i>
+                                <span>Satispay</span>
+                            </a>
+
+                            <a href="https://octopusenergy.it/octo-friends/polite-timber-22"
+                            target="_blank"
+                            class="flex items-center justify-center space-x-2 w-full
+                            text-center py-3 px-6 border border-gray-300 rounded-lg shadow-sm
+                            text-base font-medium text-gray-700 bg-white hover:bg-gray-50
+                            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
+                            transition ease-in-out duration-150">
+                                <img height="32" width="32" src="https://cdn.simpleicons.org/octopusdeploy/ff48d3"/>
+                                <span>Octopus Energy</span>
+                            </a>
+
+                            <a href="https://m.do.co/c/961645fb8359"
+                            target="_blank"
+                            class="flex items-center justify-center space-x-2 w-full
+                            text-center py-3 px-6 border border-gray-300 rounded-lg shadow-sm
+                            text-base font-medium text-gray-700 bg-white hover:bg-gray-50
+                            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
+                            transition ease-in-out duration-150">
+                                <img height="32" width="32" src="https://cdn.simpleicons.org/digitalocean/0080FF"/>
+                                <span>DigitalOcean</span>
+                            </a>
+
+                            <a href="https://budgetgamer.net/us/home"
+                            target="_blank"
+                            class="flex items-center justify-center space-x-2 w-full
+                            text-center py-3 px-6 border border-gray-300 rounded-lg shadow-sm
+                            text-base font-medium text-gray-700 bg-white hover:bg-gray-50
+                            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
+                            transition ease-in-out duration-150">
+                                <img height="32" width="32" src="/Website/BG_logo.svg"/>
+                                <span>BudgetGamer</span>
+                            </a>
+
+                            <a href="https://share.global66.com/PAORIV673"
+                            target="_blank"
+                            class="flex items-center justify-center space-x-2 w-full
+                            text-center py-3 px-6 border border-gray-300 rounded-lg shadow-sm
+                            text-base font-medium text-gray-700 bg-white hover:bg-gray-50
+                            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
+                            transition ease-in-out duration-150">
+                                <i data-lucide="circle-question-mark" class="text-indigo-600"></i>
+                                <span>Global66</span>
+
+                            <a href="https://ibkr.com/referral/paolo559"
+                            target="_blank"
+                            class="flex items-center justify-center space-x-2 w-full
+                            text-center py-3 px-6 border border-gray-300 rounded-lg shadow-sm
+                            text-base font-medium text-gray-700 bg-white hover:bg-gray-50
+                            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
+                            transition ease-in-out duration-150">
+                                <i data-lucide="chart-candlestick" class="text-red-700"></i>
+                                <span>Interactive Brokers</span>
+                            </a>
+
+                        </div>
+                    </div>
+                `
+            },
+            {
+                id: 'ribbon',
+                title: 'In Remembrance',
+                icon: 'ribbon',
+                color: 'bg-white',
+                date: 'Standing on the Shoulders of Giants',
+                description: 'The creator of the original group.',
+                content: `
+                    <img class="w-full h-auto max-w-lg" src="/Website/RIP_Leo_small.png" alt="A wise man"></>
+                    <p class="text-center"><strong>Leonardo Gongora</strong></p>
+                    <p class="text-sm text-gray-500 mt-4 text-center">The original group was created by Leonardo Gongora, on 2022-09-29 at 20:56 UTC</p>
+                `
+            }
+        ];
+
+        const newsItems = [
+            {
+                id: 101,
+                title: 'New Group Chat Created',
+                date: 'Dec 31, 2025',
+                description: 'Migrating from WhatsApp to Telegram.',
+                content: `
+                    <h4 class="text-xl font-bold mt-6 mb-3 border-b pb-1 text-slate-800">Why the Change?</h4>
+
+                    <p class="text-slate-700 mb-3">Let's be honest: the manual list process in WhatsApp was taking up too much time and caused too many mix-ups. Every time someone signed up or confirmed, it required careful copy-editing and pasting, which often led to:</p>
+
+                    <ul class="list-disc list-inside space-y-2 pl-4 text-slate-700">
+                    <li>Accidental corruption of the list order or formatting.</li>
+                    <li>Wasted time manually fixing mistakes.</li>
+                    <li>Inconsistent application of rules and the cutoff time.</li>
+                    </ul>
+
+                    <h4 class="text-xl font-bold mt-6 mb-3 border-b pb-1 text-slate-800">The Benefits of Automation</h4>
+
+                    <p class="text-slate-700 mb-3">
+                    By moving to Telegram and using a dedicated bot, we are automating the most complex parts of the list. This means:
+                    </p>
+
+                    <div class="space-y-4 p-4 bg-green-50 rounded-lg border border-green-200 mt-4">
+                    <div class="flex items-start">
+                    <i data-lucide="zap" class="w-5 h-5 mr-3 flex-shrink-0 text-green-600"></i>
+                    <p><strong>Simplified Interaction:</strong> Players no longer need to copy, edit, and paste the entire list. Just send the right command to the bot, and your entry is updated cleanly and instantly.</p>
+                    </div>
+                    <div class="flex items-start">
+                    <i data-lucide="shield-check" class="w-5 h-5 mr-3 flex-shrink-0 text-green-600"></i>
+                    <p><strong>List Integrity:</strong> The bot ensures the list is modified only in the ways it’s designed to be. No more accidental deletions, reordering, or corruption of the data.</p>
+                    </div>
+                    <div class="flex items-start">
+                    <i data-lucide="clock" class="w-5 h-5 mr-3 flex-shrink-0 text-green-600"></i>
+                    <p><strong>Reliable Cutoff:</strong> The critical cutoff logic runs automatically at the exact scheduled time, moving confirmed players to the top without any human delay or error.</p>
+                    </div>
+                    <div class="flex items-start">
+                    <i data-lucide="activity" class="w-5 h-5 mr-3 flex-shrink-0 text-green-600"></i>
+                    <p><strong>Automatic States:</strong> The list will move through its different states (Online, Cutoff, Final) automatically, keeping everyone informed in real-time.</p>
+                    </div>
+                    </div>
+
+                    <p>For transparency, the whole project is open source, just check this website url repository.</p>
+                    <p>Please help us check everybody else has migrated to the new group chat.</p>
+                `
+            }
+        ];
+
+        // --- RENDER LOGIC ---
+
+        // 1. Render Info Buttons
+        const infoContainer = document.getElementById('info-section');
+        infoButtons.forEach(btn => {
+            const buttonHTML = `
+                <button onclick="openModal('info', '${btn.id}')" class="${btn.color} p-4 rounded-xl shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center gap-2 h-32 group border border-slate-200">
+                    <div class="bg-indigo-50 p-3 rounded-full group-hover:bg-indigo-100 transition-colors text-indigo-600">
+                        <i data-lucide="${btn.icon}" class="w-6 h-6"></i>
+                    </div>
+                    <span class="font-bold text-sm text-slate-700">${btn.title}</span>
+                </button>
+            `;
+            infoContainer.innerHTML += buttonHTML;
+        });
+
+        // 2. Render News Items
+        const newsContainer = document.getElementById('news-section');
+        newsItems.forEach(item => {
+            const newsHTML = `
+                <div onclick="openModal('news', ${item.id})" class="bg-white p-5 rounded-xl shadow-sm border border-slate-100 cursor-pointer hover:border-indigo-300 transition-all active:scale-[0.99]">
+                    <div class="flex justify-between items-start mb-1">
+                        <h3 class="font-bold text-lg text-slate-800">${item.title}</h3>
+                    </div>
+                    <span class="text-xs font-semibold text-indigo-500 bg-indigo-50 px-2 py-1 rounded mb-2 inline-block">${item.date}</span>
+                    <p class="text-slate-500 text-sm line-clamp-2">${item.description}</p>
+                </div>
+            `;
+            newsContainer.innerHTML += newsHTML;
+        });
+
+        // Re-run icons after injection
+        lucide.createIcons();
+
+
+        // --- MODAL LOGIC ---
+
+        const modalOverlay = document.getElementById('modal-overlay');
+        const modalContent = document.getElementById('modal-content');
+
+        function openModal(type, id) {
+            let data;
+
+            // Find data based on type
+            if(type === 'info') {
+                data = infoButtons.find(i => i.id === id);
+            } else {
+                data = newsItems.find(n => n.id === id);
+            }
+
+            if(!data) return;
+
+            // Populate Modal
+            document.getElementById('modal-title').innerText = data.title;
+            document.getElementById('modal-date').innerText = data.date;
+            document.getElementById('modal-desc').innerText = data.description;
+            document.getElementById('modal-body').innerHTML = data.content;
+
+            // Show Modal with Animation
+            modalOverlay.classList.remove('hidden');
+            // Small timeout to allow the display:block to apply before changing opacity for transition
+            setTimeout(() => {
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                modalContent.classList.add('scale-100', 'opacity-100');
+            }, 10);
+
+            // Prevent body scroll
+            document.body.style.overflow = 'hidden';
+
+            // reload icons for those in the modals
+            lucide.createIcons();
+        }
+
+        function closeModal(event) {
+            // If event is passed (click on overlay), ensuring we didn't click content
+            if (event && !event.target.id === 'modal-overlay') return;
+
+            // Animate out
+            modalContent.classList.remove('scale-100', 'opacity-100');
+            modalContent.classList.add('scale-95', 'opacity-0');
+
+            setTimeout(() => {
+                modalOverlay.classList.add('hidden');
+                document.body.style.overflow = 'auto'; // Restore scroll
+            }, 300);
+        }
+
+    </script>
+</body>
+</html>
