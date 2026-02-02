@@ -42,9 +42,10 @@ volleyBotParser = CustomArgumentParser(description='Main parser for the VolleyBo
 subparsers = volleyBotParser.add_subparsers(title='Available commands', dest='command')
 
 # ---------------------------------- player ---------------------------------- #
-addme_parser = subparsers.add_parser('/addme', help='Adds the player to the list')
-addme_parser.add_argument('-l', '--list', dest='eventId', type=int, help='Specifies which list (opt)')
-#addme_parser.add_argument('-p', '--payee', type=int, help='Specifies how many fields the user can ends up paying (opt)')
+add_parser = subparsers.add_parser('/add', help='Adds another player to the list')
+add_parser.add_argument('mention', nargs='?', default=None, help='Mention of the other player to be added')
+add_parser.add_argument('-l', '--list', dest='eventId', type=int, help='Specifies which list (opt)')
+#add_parser.add_argument('-p', '--payee', type=int, help='Specifies how many fields the user can ends up paying (opt)')
 
 confirm_parser = subparsers.add_parser('/confirm', help='Confirms the player will play')
 confirm_parser.add_argument('emoji', nargs='?', default=None, help='Emoji used for the confirmation')
@@ -81,7 +82,8 @@ indianpoll_parser = subparsers.add_parser('/indianpoll', help='Send a the indian
 help_parser = subparsers.add_parser('/help', help='Shows the bot commands')
 
 COMMANDS_MAP = {
-    '/addme':                       'Adds the player to the list',
+    '/add':                         'Adds the player to the list',
+    '/add <@mention>':              'Adds another player to the list',
     '/confirm <emoji>':             'Confirms the player assistance & payment',
     '/remove':                      'Removes the player from the list',
     '/addbkp <name>':               'Adds a bkp to the list',
@@ -95,10 +97,10 @@ COMMANDS_MAP = {
 }
 
 ADMIN_COMMANDS_MAP = {
-    '/sendlist':                'Adds the player to the list',
-    '/localdb':                 'Sends the local db to this chat',
-    '/sendmsg <msg>':           'Sends a message to the groupchat',
-    '/addevent <yyyy-mm-dd>':   'Adds a bkp to the list',
+    '/sendlist':                'Sends the list to the groupchat',
+    '/localdb':                 'Shows the local db in this chat',
+    '/sendmsg "<msg>"':         'Sends a custom message to the groupchat',
+    '/addevent <yyyy-mm-dd>':   'Add a new event with the default values',
     '/reload':                  'Reloads the bot server',
     '/help':                    'Prints this lists of commands',
 }

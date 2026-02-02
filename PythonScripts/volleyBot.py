@@ -14,6 +14,12 @@ from tools import TELEGRAM_TOKEN, TELEGRAM_BEACH_GROUP_ID, TELEGRAM_LIST_TOPIC_I
 from tools import CommandNotValid, ParserError, getEventId, generateListText, generateBotHelp, generateAdminBotHelp, sendBotMsg, clearTelegramApplicationJobQueue, generateCutOffAlert, getUserHTMLTag, appendMessageToLogFile
 from tools import volleyBotParser, volleyBotAdminParser, dbMembers, dbEvents, indianTakeawayMenuOptions
 
+async def post_init_info(application:Application):
+    # This runs after the bot is initialized but before it starts polling# This runs after the bot is initialized but before it starts polling
+    bot_info = await application.bot.get_me()
+    print(f"--- Success! @{bot_info.username} is now online ---")
+    print("Listening for messages...")
+
 async def errorHandler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     print(f'Error {type(context.error).__name__}')
@@ -238,6 +244,50 @@ async def botCommand_addme(update: Update, context: ContextTypes.DEFAULT_TYPE, m
     dbTools.addMemberToList(msgTime, eventId, chatId)
     await sendBotMsg(context.application.bot, generateListText(eventId))
 
+async def botCommand_add(update: Update, context: ContextTypes.DEFAULT_TYPE, msgTime:datetime, chatId:int, args:argparse.Namespace):
+
+    eventId = getEventId(update, args.eventId)
+
+    # ------------------------ Another user was mentioned ------------------------ #
+    if args.mention:
+        mention_chat_id:int = 0
+        # Getting the mention user id
+        for entity in update.message.entities:
+
+            # Case for mentions of user without a Telegram username, text_mentions contains the user id of the mention, text do not have the "@"
+            if entity.type == 'text_mention':
+                mention_chat_id = entity.user.id
+                break
+
+            # Case for mentions of users that have an active username in Telegram, needs to match the username to the chat_id
+            elif entity.type == 'mention':
+                #                                               This +1 skips the initial "@"
+                mention_username = update.message.text[entity.offset +1 : entity.offset + entity.length]
+                # Getting the mention_chat_id from local, not optimal but fine
+                for uId in dbMembers:
+                    if dbMembers[uId]['username'] == mention_username:
+                        mention_chat_id = uId
+                        break
+
+        if mention_chat_id == 0:
+            raise CommandNotValid('The player mention is wrong')
+
+        # Checking if the mentioned player is already on the list as ON_LIST
+        if dbEvents[eventId]['list'].get(mention_chat_id, {}).get('status', '-1') == 'ON_LIST':
+            raise CommandNotValid('That player is already on the list !')
+
+        dbTools.addMemberToList(msgTime, eventId, mention_chat_id)
+
+    # -------------- No other user was mentioned, consider self user ------------- #
+    else:
+        # Check if the player is already in the list as ON_LIST
+        if dbEvents[eventId]['list'].get(chatId, {}).get('status', '-1') == 'ON_LIST':
+            raise CommandNotValid('You are already on the list !')
+
+        dbTools.addMemberToList(msgTime, eventId, chatId)
+
+    await sendBotMsg(context.application.bot, generateListText(eventId))
+
 async def botCommand_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE, msgTime: datetime, chatId:int, args:argparse.Namespace):
 
     eventId = getEventId(update, args.eventId)
@@ -351,7 +401,7 @@ async def botCommand_indianpoll(update: Update, context: ContextTypes.DEFAULT_TY
         options=indianTakeawayMenuOptions,
         is_anonymous=False, # Optional: defaults to True
         allows_multiple_answers=True, # Optional: defaults to False
-        disable_notification=True,
+        #disable_notification=True,
         open_period=600,
     )
 
@@ -365,8 +415,8 @@ async def parseBotCommand(update: Update, context: ContextTypes.DEFAULT_TYPE, ms
         args = volleyBotParser.parse_args(args_list)
 
         # Handle the commands
-        if args.command == '/addme':
-            await botCommand_addme(update, context, msgTime, chatId, args)
+        if args.command == '/add':
+            await botCommand_add(update, context, msgTime, chatId, args)
 
         elif args.command == '/confirm':
             await botCommand_confirm(update, context, msgTime, chatId, args)
@@ -427,6 +477,10 @@ async def handlerBeachVolleyCommands(update: Update, context: ContextTypes.DEFAU
     if chatId not in dbMembers:
         dbTools.addOrUpdateUser(update.effective_user)
 
+    # Checking if the username of the user has changed
+    elif update.effective_user.username != dbMembers[chatId].get('username', '-1'):
+        dbTools.changeMemberUsername(msgTime, chatId, update.effective_user.username)
+
     messageText = update.effective_message.text.replace(f'@{context.bot.username}', '')
     dbTools.addCommandLogs(msgTime, chatId, messageText)
 
@@ -435,8 +489,10 @@ async def handlerBeachVolleyCommands(update: Update, context: ContextTypes.DEFAU
 
 def main():
 
+    print('Starting bot...')
+
     # Create the application
-    application = Application.builder().token(TELEGRAM_TOKEN).build()
+    application = Application.builder().token(TELEGRAM_TOKEN).post_init(post_init_info).build()
 
     # Prepare Event tasks
     reScheduleFutureEvents(application)

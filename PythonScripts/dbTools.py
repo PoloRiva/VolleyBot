@@ -6,8 +6,8 @@ import html
 from tools import createPostgresSQLConnection, dbEvents, dbMembers
 
 # dbMembers {
-#   chatId_0: {'nickname': nickname, 'rank': rank},
-#   chatId_1: {'nickname': nickname, 'rank': rank},
+#   chatId_0: {'nickname': nickname, 'username': username, 'rank': rank},
+#   chatId_1: {'nickname': nickname, 'username': username, 'rank': rank},
 # }
 
 # dbEvents {
@@ -68,11 +68,11 @@ def syncDbLocally():
 
     with createPostgresSQLConnection() as conn:
         # ---------------------------------- Members --------------------------------- #
-        sql = ''' SELECT chatId, nickname, rank FROM members WHERE rank != 'Banned' '''
+        sql = ''' SELECT chatId, nickname, username, rank FROM members WHERE rank != 'Banned' '''
         with conn.cursor() as cur:
             cur.execute(sql)
             for r in cur.fetchall():
-                dbMembers[r[0]] = {'nickname': r[1], 'rank': r[2]}
+                dbMembers[r[0]] = {'nickname': r[1], 'username': r[2], 'rank': r[3]}
 
         # ---------------------------------- Events ---------------------------------- #
         sql = ''' SELECT id, place, startDatetime, endDatetime, onlineDatetime, cutoffDatetime, players, price, status FROM events WHERE status IN ('NEW', 'ONLINE', 'CUTOFF', 'PLAYED') '''
@@ -146,19 +146,21 @@ def cutoffEvent(eventId):
 # ---------------------------------------------------------------------------- #
 def addOrUpdateUser(user: User):
 
-    sql = '''   INSERT INTO members (chatId, nickname, rank, createDatetime, lastUpdateDatetime)
-                VALUES (%(chatId)s, %(nickname)s, 'Member', %(now)s, %(now)s) ON CONFLICT (chatId) DO UPDATE SET rank = 'Member', lastUpdateDatetime = %(now)s '''
+    sql = '''   INSERT INTO members (chatId, nickname, username, rank, createDatetime, lastUpdateDatetime)
+                VALUES (%(chatId)s, %(nickname)s, %(username)s, 'Member', %(now)s, %(now)s) ON CONFLICT (chatId) DO
+                UPDATE SET rank = 'Member', lastUpdateDatetime = %(now)s '''
 
     with createPostgresSQLConnection() as conn:
         with conn.cursor() as cur:
             cur.execute(sql, {  'chatId': user.id,
                                 'nickname': user.first_name,
+                                'username': user.username,
                                 'now': datetime.now()})
         conn.commit()
 
     # local
     # If the user was banned, the record would not be locally, the nickname would be unsync until the next syncDB call
-    dbMembers[user.id] = {'nickname': user.first_name, 'rank': 'Member'}
+    dbMembers[user.id] = {'nickname': user.first_name, 'username': user.username, 'rank': 'Member'}
 
 def changeMemberRank(user: User, rank):
 
@@ -196,6 +198,23 @@ def changeMemberNickname(msgTime:datetime, chatId:int, newNickname:str):
 
     # local
     dbMembers[chatId]['nickname'] = newNickname
+
+def changeMemberUsername(msgTime:datetime, chatId:int, newUsername:str):
+
+    sql = '''   UPDATE members
+                SET username = %(newUsername)s,
+                    lastupdatedatetime = %(now)s
+                WHERE chatId = %(chatId)s '''
+
+    with createPostgresSQLConnection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, {  'newUsername': newUsername,
+                                'chatId': chatId,
+                                'now': msgTime})
+        conn.commit()
+
+    # local
+    dbMembers[chatId]['username'] = newUsername
 
 # ---------------------------------------------------------------------------- #
 #                                     Lists                                    #

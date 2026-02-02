@@ -1,6 +1,7 @@
 CREATE TABLE members (
     chatId BIGINT UNIQUE NOT NULL,
     nickname TEXT NOT NULL,
+    username TEXT,
     rank TEXT NOT NULL,
     createDatetime TIMESTAMP NOT NULL,
     lastUpdateDatetime TIMESTAMP NOT NULL
