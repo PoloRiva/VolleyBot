@@ -330,9 +330,9 @@ async def sendBotMsg(bot:Bot, text:str, chatId:int=TELEGRAM_BEACH_GROUP_ID, mess
 
     await bot.send_message(chat_id=chatId, message_thread_id=messageThreadId, text=text, parse_mode=ParseMode.HTML)
 
-def getUserHTMLTag(chatId:int):
+def getUserHTMLTag(userId:int):
 
-    return f'<a href="tg://user?id={chatId}">{dbMembers[chatId]['nickname']}</a>'
+    return f'<a href="tg://user?id={userId}">{dbMembers[str(userId)]['nickname']}</a>'
 
 def clearTelegramApplicationJobQueue(application: Application):
 
