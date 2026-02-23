@@ -52,7 +52,7 @@ UNKNOWN_COMMAND = (
 )
 
 def welcome(userName):
-    return f'{random.choice(WELCOME_PHRASES).format(userName=userName)}\n\nCheck the <a href="https://poloriva.github.io/VolleyBot/">Website</a> for information about the group'
+    return f'{random.choice(WELCOME_PHRASES).format(userName=userName)}\n\nCheck the <a href="https://poloriva.github.io/VolleyBot/">Website</a> for the rules, FAQs and all the info you need to get started'
 
 def goodbye(userName):
     return random.choice(GOODBYE_PHRASES).format(userName=userName)

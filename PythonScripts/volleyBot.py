@@ -139,7 +139,7 @@ async def handlerMembersUpdate(update: Update, context: ContextTypes.DEFAULT_TYP
         if update.chat_member.new_chat_member.status == ChatMember.MEMBER:
             # User added to the group
             dbTools.addOrUpdateUser(user=update.chat_member.new_chat_member.user)
-            await update.effective_chat.send_message(phrases.welcome(userName=getUserHTMLTag(str(user.id))), parse_mode=ParseMode.HTML)
+            await update.effective_chat.send_message(phrases.welcome(userName=getUserHTMLTag(user.id)), parse_mode=ParseMode.HTML)
 
         elif update.chat_member.new_chat_member.status == ChatMember.ADMINISTRATOR:
             # User promoted to admin
@@ -147,9 +147,8 @@ async def handlerMembersUpdate(update: Update, context: ContextTypes.DEFAULT_TYP
 
         elif update.chat_member.new_chat_member.status == ChatMember.BANNED:
             # User removed from the group
-            memberNickname = dbMembers[str(user.id)]['nickname']
+            await update.effective_chat.send_message(phrases.goodbye(userName=getUserHTMLTag(user.id)), parse_mode=ParseMode.HTML)
             dbTools.changeMemberRank(user=user, rank='Banned')
-            await update.effective_chat.send_message(phrases.goodbye(userName=getUserHTMLTag(str(user.id))), parse_mode=ParseMode.HTML)
 
 async def botCommand_sendlist(update: Update, context: ContextTypes.DEFAULT_TYPE, args):
 
