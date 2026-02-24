@@ -365,16 +365,19 @@ async def botCommand_removebkp(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def botCommand_changenickname(update: Update, context: ContextTypes.DEFAULT_TYPE, msgTime:datetime, chatId:int, args):
 
-    if args.nickname is None:
+    nickname = ' '.join(args.nickname).strip("'\"“”")
+
+    # This catches no argument at all && arguments that were just spaces or quotes
+    if not nickname:
         raise CommandNotValid('You forgot to send your new nickname')
 
-    if len(args.nickname) > 50:
+    if len(nickname) > 50:
         raise CommandNotValid('Your nickname is too long!')
 
     oldNickname = dbMembers[chatId]['nickname']
-    dbTools.changeMemberNickname(msgTime, chatId, args.nickname)
+    dbTools.changeMemberNickname(msgTime, chatId, nickname)
 
-    await sendBotMsg(context.application.bot, phrases.changeNickname(oldNickname, args.nickname))
+    await sendBotMsg(context.application.bot, phrases.changeNickname(oldNickname, nickname))
 
 async def botCommand_stats(update: Update, context: ContextTypes.DEFAULT_TYPE, msgTime:datetime, chatId:int, args):
 
@@ -384,7 +387,9 @@ async def botCommand_stats(update: Update, context: ContextTypes.DEFAULT_TYPE, m
 
 async def botCommand_complaint(update: Update, context: ContextTypes.DEFAULT_TYPE, msgTime:datetime, chatId:int, args):
 
-    if args.text is None:
+    complaint_text = ' '.join(args.text).strip("'\"“”")
+
+    if not complaint_text:
         raise CommandNotValid('You forgot to send the complaint text')
 
     await sendBotMsg(context.application.bot, phrases.complaint())
@@ -465,11 +470,11 @@ async def handlerBeachVolleyCommands(update: Update, context: ContextTypes.DEFAU
     # set msgTime in case an async code runs between now and the orderDatetime
     msgTime = datetime.now()
 
-    # Filtering topic to only consider THE LIST commands
-    # topicId = update.effective_message.message_thread_id
-    # if topicId != TELEGRAM_LIST_TOPIC_ID:
-    #     # This is not comming from THE LIST topic, ignore
-    #     return
+    # Filtering topic to only consider VolleyBot topic commands
+    topicId = update.effective_message.message_thread_id
+    if topicId != TELEGRAM_LIST_TOPIC_ID:
+        # This is not comming from VolleyBot topic, ignore
+        return
 
     # Getting the userId, if not present the user should be added (db and locally)
     chatId = update.effective_user.id

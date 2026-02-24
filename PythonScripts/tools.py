@@ -48,14 +48,14 @@ add_parser.add_argument('-l', '--list', dest='eventId', type=int, help='Specifie
 #add_parser.add_argument('-p', '--payee', type=int, help='Specifies how many fields the user can ends up paying (opt)')
 
 confirm_parser = subparsers.add_parser('/confirm', help='Confirms the player will play')
-confirm_parser.add_argument('emoji', nargs='?', default=None, help='Emoji used for the confirmation')
+confirm_parser.add_argument('emoji', nargs='?', default='✅', help='Emoji used for the confirmation')
 confirm_parser.add_argument('-l', '--list', dest='eventId', type=int, help='Specifies which list (opt)')
 
 remove_parser = subparsers.add_parser('/remove', help='Removes the player from the list')
 remove_parser.add_argument('-l', '--list', dest='eventId', type=int, help='Specifies which list (opt)')
 
 changenickname_parser = subparsers.add_parser('/changenickname', help='Changes you nickName')
-changenickname_parser.add_argument('nickname', nargs='?', default=None, help='''New player's nickname''')
+changenickname_parser.add_argument('nickname', nargs='*', default=[], help='''New player's nickname''')
 
 # ------------------------------------ bkp ----------------------------------- #
 addbkp_parser = subparsers.add_parser('/addbkp', help='Adds a bkp to the list')
@@ -64,7 +64,7 @@ addbkp_parser.add_argument('-l', '--list', dest='eventId', type=int, help='Speci
 
 confirmbkp_parser = subparsers.add_parser('/confirmbkp', help='Confirms the bkp will play')
 confirmbkp_parser.add_argument('name', nargs='?', default=None, help='Name of the bkp player')
-confirmbkp_parser.add_argument('emoji', nargs='?', default=None, help='Emoji used for the bkp confirmation')
+confirmbkp_parser.add_argument('emoji', nargs='?', default='✅', help='Emoji used for the bkp confirmation')
 confirmbkp_parser.add_argument('-l', '--list', dest='eventId', type=int, help='Specifies which list (opt)')
 
 removebkp_parser = subparsers.add_parser('/removebkp', help='Removes bkp from the list')
@@ -75,7 +75,7 @@ removebkp_parser.add_argument('-l', '--list', dest='eventId', type=int, help='Sp
 stats_parser = subparsers.add_parser('/stats', help='Send the member stats')
 
 complaint_parser = subparsers.add_parser('/complaint', help='Send a complaint')
-complaint_parser.add_argument('text', nargs='?', default=None, help='Compaint text')
+complaint_parser.add_argument('text', nargs='*', default=[], help='Compaint text')
 
 indianpoll_parser = subparsers.add_parser('/indianpoll', help='Send a the indian menu poll')
 

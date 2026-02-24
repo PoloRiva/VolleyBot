@@ -4,7 +4,9 @@ CREATE TABLE members (
     username TEXT,
     rank TEXT NOT NULL,
     createDatetime TIMESTAMP NOT NULL,
-    lastUpdateDatetime TIMESTAMP NOT NULL
+    lastUpdateDatetime TIMESTAMP NOT NULL,
+    idParentMember BIGINT,
+    CONSTRAINT fk_idParentMember FOREIGN KEY (idParentMember) REFERENCES members(chatId)
 );
 
 CREATE TABLE events (
