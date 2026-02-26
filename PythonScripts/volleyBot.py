@@ -13,7 +13,7 @@ import dbTools, phrases
 from tools import CommandNotValid, ParserError
 from tools import getEventId, generateListText, generateBotHelp, generateAdminBotHelp, sendBotMsg, clearTelegramApplicationJobQueue, generateCutOffAlert, getUserHTMLTag, appendMessageToLogFile, build_volleyball_tree_png
 from tools import TELEGRAM_TOKEN, TELEGRAM_BEACH_GROUP_ID, TELEGRAM_LIST_TOPIC_ID, TELEGRAM_PAYEE_CHAT_IDS, TELEGRAM_API_OWNER, COMMANDS_MAP
-from tools import volleyBotParser, volleyBotAdminParser, dbMembers, dbEvents, indianTakeawayMenuOptions, last_indian_poll_datetime
+from tools import volleyBotParser, volleyBotAdminParser, dbMembers, dbEvents, indianTakeawayMenuOptions
 
 async def post_init_info(application:Application):
     # This runs after the bot is initialized but before it starts polling# This runs after the bot is initialized but before it starts polling
