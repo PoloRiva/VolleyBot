@@ -421,3 +421,16 @@ def addNewEvent(startDate:date):
         'list': dict(),
         'bkp': dict(),
     }
+
+def get_volley_tree_rows():
+
+    with createPostgresSQLConnection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(''' SELECT
+                                chatId,
+                                nickname,
+                                createDatetime,
+                                idParentMember,
+                                CASE "rank" WHEN 'Banned' THEN false ELSE true END AS isOnline
+                            FROM members ''')
+            return cur.fetchall()

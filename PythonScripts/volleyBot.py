@@ -10,9 +10,10 @@ import shlex
 import json
 
 import dbTools, phrases
+from tools import CommandNotValid, ParserError
+from tools import getEventId, generateListText, generateBotHelp, generateAdminBotHelp, sendBotMsg, clearTelegramApplicationJobQueue, generateCutOffAlert, getUserHTMLTag, appendMessageToLogFile, build_volleyball_tree_png
 from tools import TELEGRAM_TOKEN, TELEGRAM_BEACH_GROUP_ID, TELEGRAM_LIST_TOPIC_ID, TELEGRAM_PAYEE_CHAT_IDS, TELEGRAM_API_OWNER, COMMANDS_MAP
-from tools import CommandNotValid, ParserError, getEventId, generateListText, generateBotHelp, generateAdminBotHelp, sendBotMsg, clearTelegramApplicationJobQueue, generateCutOffAlert, getUserHTMLTag, appendMessageToLogFile
-from tools import volleyBotParser, volleyBotAdminParser, dbMembers, dbEvents, indianTakeawayMenuOptions
+from tools import volleyBotParser, volleyBotAdminParser, dbMembers, dbEvents, indianTakeawayMenuOptions, last_indian_poll_datetime
 
 async def post_init_info(application:Application):
     # This runs after the bot is initialized but before it starts polling# This runs after the bot is initialized but before it starts polling
@@ -399,15 +400,44 @@ async def botCommand_complaint(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def botCommand_indianpoll(update: Update, context: ContextTypes.DEFAULT_TYPE, msgTime:datetime, chatId:int, args):
 
+    # Main dish
     await context.bot.send_poll(
         chat_id=TELEGRAM_BEACH_GROUP_ID,
-        question='Indian Takeaway Menu Poll',
-        options=indianTakeawayMenuOptions,
-        is_anonymous=False, # Optional: defaults to True
-        allows_multiple_answers=True, # Optional: defaults to False
-        #disable_notification=True,
+        message_thread_id=TELEGRAM_LIST_TOPIC_ID,
+        question='Indian Takeaway Main Dish Poll',
+        options=indianTakeawayMenuOptions['main'],
+        is_anonymous=False,
+        allows_multiple_answers=True,
         open_period=600,
     )
+
+    # Side option
+    await context.bot.send_poll(
+        chat_id=TELEGRAM_BEACH_GROUP_ID,
+        message_thread_id=TELEGRAM_LIST_TOPIC_ID,
+        question='Indian Takeaway Side Dish Poll',
+        options=indianTakeawayMenuOptions['side'],
+        is_anonymous=False,
+        allows_multiple_answers=True,
+        open_period=600,
+    )
+
+    await sendBotMsg(context.application.bot, 'Selec the dishes you want to order and VOTE\n<i>The polls will close in 10 minutes</i> ☝️')
+
+async def botCommand_volleyballtree(update: Update, context: ContextTypes.DEFAULT_TYPE, msgTime:datetime, chatId:int, args):
+
+    # Runs the query in the db
+    rows = dbTools.get_volley_tree_rows()
+
+    # Generate the tree png
+    build_volleyball_tree_png(rows, 'volleyball_tree')
+
+    with open('volleyball_tree.pdf', 'rb') as tree_file:
+        await context.application.bot.send_document(
+            chat_id=TELEGRAM_BEACH_GROUP_ID,
+            message_thread_id=TELEGRAM_LIST_TOPIC_ID,
+            document=tree_file
+        )
 
 async def parseBotCommand(update: Update, context: ContextTypes.DEFAULT_TYPE, msgTime: datetime, chatId:int, commandString:str):
 
@@ -443,11 +473,14 @@ async def parseBotCommand(update: Update, context: ContextTypes.DEFAULT_TYPE, ms
         elif args.command == '/stats':
             await botCommand_stats(update, context, msgTime, chatId, args)
 
+        elif args.command == '/complaint':
+            await botCommand_complaint(update, context, msgTime, chatId, args)
+
         elif args.command == '/indianpoll':
             await botCommand_indianpoll(update, context, msgTime, chatId, args)
 
-        elif args.command == '/complaint':
-            await botCommand_complaint(update, context, msgTime, chatId, args)
+        elif args.command == '/volleyballtree':
+            await botCommand_volleyballtree(update, context, msgTime, chatId, args)
 
         elif args.command == '/help':
             await sendBotMsg(context.application.bot, generateBotHelp())

@@ -2,6 +2,7 @@ from telegram.constants import ParseMode
 from telegram.ext import Application
 from telegram import Update, Bot
 from datetime import datetime
+from graphviz import Digraph
 import argparse
 import psycopg
 import json
@@ -79,6 +80,8 @@ complaint_parser.add_argument('text', nargs='*', default=[], help='Compaint text
 
 indianpoll_parser = subparsers.add_parser('/indianpoll', help='Send a the indian menu poll')
 
+volleyballtree_parser = subparsers.add_parser('/volleyballtree', help='Generates and shares the volleyball tree')
+
 help_parser = subparsers.add_parser('/help', help='Shows the bot commands')
 
 COMMANDS_MAP = {
@@ -93,6 +96,7 @@ COMMANDS_MAP = {
     '/stats':                       'Shows the user stats',
     '/complaint <text>':            'Sends a formal complaint to the admins',
     '/indianpoll':                  'Sends the indian menu poll',
+    '/volleyballtree':              'Generates and shares the volleyball tree',
     '/help':                        'Prints this lists of commands',
 }
 
@@ -126,20 +130,30 @@ adminhelpevent_parser = adminSubparsers.add_parser('/help', help='Sends the list
 reload_parser = adminSubparsers.add_parser('/reload', help='Add new events (admin)')
 
 # ----------------------- Indian Takeaway Menu options ----------------------- #
-indianTakeawayMenuOptions = [
-    'Pollo Kurma 🍗🥥🫚',
-    'Pollo Tikka Massala Piccante 🍗🥛🌶️',
-    'Pollo Tikka Massala Dolce 🍗🥛🥥',
-    'Pollo Makhoni 🍗🥭',
-    'Pollo al Curry 🍗🍛',
-    'Pollo Madras 🍗🌶️🍋',
-    'Riso bianco 🍚',
-    'Riso con limone 🍚🍋',
-    'Plain naan 🫓',
-    'Naan al formaggio 🫓🧀',
-    'Naan all\'aglio 🫓🧄',
-    'Other (write below)',
-]
+indianTakeawayMenuOptions = {
+    'main': [
+        'Pollo Kurma 🍗🥥🫚',
+        'Pollo Tikka Massala Piccante 🍗🥛🌶️',
+        'Pollo Tikka Massala Dolce 🍗🥛🥥',
+        'Pollo Makhoni 🍗🥭',
+        'Pollo Balti 🍗🫑',
+        'Pollo Madras 🍗🌶️🍋',
+        'Cecci Matka Haryali 🧆🥔',
+        'Formaggio al forno Massala 🧀🥛',
+        'Ceci, patate e formaggio 🧆🥔🧀',
+        'Other (write below)',
+    ],
+    'side': [
+        'Riso bianco 🍚',
+        'Riso con limone 🍚🍋',
+        'Riso con uova 🍚🥚',
+        'Plain naan 🫓',
+        'Naan al formaggio 🫓🧀',
+        'Naan all\'aglio 🫓🧄',
+        'Paratha 🫓🧈',
+        'Other (write below)',
+    ]
+}
 
 # ---------------------------------------------------------------------------- #
 #                                   FUNCTIONS                                  #
@@ -343,3 +357,88 @@ def appendMessageToLogFile(fileName, msg, newLineSeparator='\n'):
 
     with open(f'logs/{fileName}_{datetime.now().strftime('%Y%m%d')}.txt', "a") as f:
         f.write(f'{datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")} {msg}{newLineSeparator}')
+
+def build_volleyball_tree_png(rows, output_file):
+    # 1. SETUP COLOR PALETTE
+    BG_COLOR = "#FAF7F2"       # Subtle warm parchment background
+    OFFLINE_COLOR = "#DEDBD2"  # Muted pebble grey
+    BORDER_COLOR = "#6B705C"   # Olive-toned charcoal for borders
+    EDGE_COLOR = "#A5A58D"     # Muted autumn green-grey for lines
+
+    # Compute date span
+    dates = [r[2] for r in rows]
+    min_date, max_date = min(dates), max(dates)
+    span = (max_date - min_date).total_seconds() or 1
+
+    def get_autumn_gradient(dt):
+        t = (dt - min_date).total_seconds() / span
+        # Transition: Burnt Orange -> Ochre -> Sage Green
+        if t < 0.5:
+            # Terracotta to Muted Gold
+            r = int(226 + (233 - 226) * (t * 2))
+            g = int(149 + (196 - 149) * (t * 2))
+            b = int(120 + (106 - 120) * (t * 2))
+        else:
+            # Muted Gold to Soft Sage
+            t2 = (t - 0.5) * 2
+            r = int(233 + (204 - 233) * t2)
+            g = int(196 + (213 - 196) * t2)
+            b = int(106 + (174 - 106) * t2)
+        return f"#{r:02x}{g:02x}{b:02x}"
+
+    # 2. INITIALIZE GRAPH
+    g = Digraph("AutumnTree")
+    g.format = "pdf"
+
+    g.attr(
+        rankdir="TB",
+        splines="true",
+        bgcolor=BG_COLOR,
+        fontname="Helvetica,Arial,sans-serif",
+        nodesep="1.0",      # More horizontal space to prevent edge crowding
+        ranksep="1.2",      # Vertical space between years
+        concentrate="false",
+        pad="0.5"
+    )
+
+    # Node default (invisible so the HTML table defines the shape)
+    g.attr("node", shape="none", fontname="Helvetica,Arial,sans-serif")
+
+    # Edge default
+    g.attr("edge", color=EDGE_COLOR, penwidth="1.5", arrowsize="0.8")
+
+    # 3. ADD NODES & EDGES
+    for user_id, name, dt, parent, is_online in rows:
+        fill = get_autumn_gradient(dt) if is_online else OFFLINE_COLOR
+        date_str = dt.strftime('%Y-%m-%d')
+
+        # Added a nested table structure to ensure the "card" looks padded.
+        label = f'''<
+            <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="8">
+                <TR>
+                    <TD BGCOLOR="{fill}" COLOR="{BORDER_COLOR}" STYLE="ROUNDED">
+                        <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0">
+                            <TR><TD ALIGN="CENTER"><B><FONT POINT-SIZE="13">{name}</FONT></B></TD></TR>
+                            <TR><TD ALIGN="CENTER"><FONT POINT-SIZE="9" COLOR="#333333">{date_str}</FONT></TD></TR>
+                        </TABLE>
+                    </TD>
+                </TR>
+            </TABLE>>'''
+
+        g.node(str(user_id), label=label)
+
+        if parent is not None:
+            g.edge(str(parent), str(user_id))
+
+    # 4. PRESERVE HIERARCHY (Yearly Ranks)
+    year_groups = {}
+    for r in rows:
+        year_groups.setdefault(r[2].year, []).append(str(r[0]))
+
+    for year, ids in sorted(year_groups.items()):
+        with g.subgraph() as s:
+            s.attr(rank="same")
+            for uid in ids:
+                s.node(uid)
+
+    out_path = g.render(output_file, cleanup=True)

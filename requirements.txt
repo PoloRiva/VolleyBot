@@ -3,3 +3,4 @@
 psycopg[binary,pool] == 3.3.2
 python-telegram-bot[job-queue] == 22.5
 emoji == 2.15.0
+graphviz == 0.21
