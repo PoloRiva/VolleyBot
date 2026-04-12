@@ -298,7 +298,7 @@ def generateListText(eventId:int):
             # Add line divider ?
             if lineDivider is False:
                 #  Reached number of players            No more confirmations
-                if i == dbEvents[eventId]['players'] or l['emoji'] is None:
+                if (i - 1) == dbEvents[eventId]['players'] or l['emoji'] is None:
                     txt += '\n✄┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈'
                     lineDivider = True
 
