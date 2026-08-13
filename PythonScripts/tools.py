@@ -10,24 +10,25 @@ import html
 
 import phrases
 
-CREDS_JSON = json.load(open('creds.json'))
+# loading credentials
+with open('creds.json') as creds:
+    CREDS_JSON = json.load(creds)
+POSTGRES_CONNINFO = CREDS_JSON['postgresql']['conninfo']
 TELEGRAM_TOKEN = CREDS_JSON['telegram']['bot_token']
 TELEGRAM_BEACH_GROUP_ID = CREDS_JSON['telegram']['group_id']
-TELEGRAM_LIST_TOPIC_ID = CREDS_JSON['telegram']['thread_id']
+TELEGRAM_LIST_TOPIC_ID = None #CREDS_JSON['telegram']['thread_id']
 TELEGRAM_PAYEE_CHAT_IDS = CREDS_JSON['telegram']['payees']
 TELEGRAM_API_OWNER = CREDS_JSON['telegram']['owner']
 
 # Local db
-dbMembers = dict()
-dbEvents = dict()
+dbMembers = {}
+dbEvents = {}
 
 class CommandNotValid(Exception):
-
     def __init__(self, response):
         self.response = response
 
 class ParserError(Exception):
-
     def __init__(self, response):
         self.response = response
 
@@ -158,13 +159,13 @@ indianTakeawayMenuOptions = {
 # ---------------------------------------------------------------------------- #
 #                                   FUNCTIONS                                  #
 # ---------------------------------------------------------------------------- #
-def generateBotHelp(command=None):
+def generate_bot_help(command=None):
 
     if command is None:
         helpText = 'List of available commands:'
 
-        for c in COMMANDS_MAP:
-            helpText += f'\n<code>{html.escape(c):{'<'}{30}}</code>\n    {html.escape(COMMANDS_MAP[c])}'
+        for c, d in COMMANDS_MAP.items():
+            helpText += f'\n<code>{html.escape(c):{'<'}{30}}</code>\n    {html.escape(d)}'
 
         helpText += '\n\n<i>any text containing spaces should be wrapped on double quotes, example:</i>\n<code>/addbkp "Volley Bot"</code>'
 
@@ -173,29 +174,29 @@ def generateBotHelp(command=None):
 
     return helpText
 
-def generateAdminBotHelp(command=None):
+def generate_admin_bot_help(command=None):
 
     if command is None:
         helpText = 'List of available commands:'
 
-        for c in ADMIN_COMMANDS_MAP:
-            helpText += f'\n<code>{html.escape(c):{'<'}{30}}</code>\n    {html.escape(ADMIN_COMMANDS_MAP[c])}'
+        for c, d in ADMIN_COMMANDS_MAP.items():
+            helpText += f'\n<code>{html.escape(c):{'<'}{30}}</code>\n    {html.escape(d)}'
 
     else:
         helpText = f'<code>{html.escape(command):{'<'}{30}}</code>\n    {html.escape(ADMIN_COMMANDS_MAP[command])}'
 
     return helpText
 
-def createPostgresSQLConnection():
-    return psycopg.connect(conninfo=CREDS_JSON['postgresql']['conninfo'])
+def create_postgreSQL_connection():
+    return psycopg.connect(conninfo=POSTGRES_CONNINFO)
 
-def getEventId(update:Update, eventId:int=None):
+def get_event_id(update:Update, eventId:int|None=None):
 
     activeEventsId = [eId for eId in dbEvents if dbEvents[eId]['status'] in ('ONLINE', 'CUTOFF')]
 
     if len(activeEventsId) == 0:
         # raise CommandNotValid('There are no active lists at this time')
-        raise CommandNotValid(phrases.noGamesAvailable(dbMembers[update.effective_user.id]['nickname']))
+        raise CommandNotValid(phrases.no_games_available(dbMembers[update.effective_user.id]['nickname']))
 
     elif eventId:
         if eventId not in activeEventsId:
@@ -209,7 +210,7 @@ def getEventId(update:Update, eventId:int=None):
         else:
             raise CommandNotValid('Multiple lists are active, use the flag --list <listValue> to specify which are you refering to')
 
-def generateListText(eventId:int):
+def generate_list_text(eventId:int):
 
     # HEAD
     txt = f'''[{eventId}] {dbEvents[eventId]['place']} - {dbEvents[eventId]['start'].strftime('%a %d %b %H:%M')} ({round((dbEvents[eventId]['end']-dbEvents[eventId]['start']).total_seconds()/60)} mins, €{round(dbEvents[eventId]['price']/dbEvents[eventId]['players'],4)}/ea, {dbEvents[eventId]['players']}p) '''
@@ -231,7 +232,7 @@ def generateListText(eventId:int):
         bkpIndex = i
 
         # BKP
-        flatBkp = list()
+        flatBkp = []
         for chatId in dbEvents[eventId]['bkp']:
             for bkpNickname in [bkpNickname for bkpNickname in dbEvents[eventId]['bkp'][chatId] if dbEvents[eventId]['bkp'][chatId][bkpNickname]['status'] == 'ON_LIST']:
                 flatBkp.append({
@@ -254,13 +255,13 @@ def generateListText(eventId:int):
 
             if i == bkpIndex:
                 # Bkp Head
-                txt += f'''\n\nBkp:'''
+                txt += '\n\nBkp:'
             txt += f'''\n{i}. {bkp['backupNickname']} ({dbMembers[bkp['chatId']]['nickname']}){f' {bkp['emoji']}' if bkp['emoji'] else ''}'''
             i += 1
 
     # ------------------------------- status CUTOFF ------------------------------ #
     elif dbEvents[eventId]['status'] == 'CUTOFF':
-        flatList = list()
+        flatList = []
         lineDivider = False
         # LIST
         for chatId in dbEvents[eventId]['list']:
@@ -295,12 +296,10 @@ def generateListText(eventId:int):
                 else:
                     continue
 
-            # Add line divider ?
-            if lineDivider is False:
-                #  Reached number of players            No more confirmations
-                if (i - 1) == dbEvents[eventId]['players'] or l['emoji'] is None:
-                    txt += '\n✄┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈'
-                    lineDivider = True
+            # Add line divider ?        Reached number of players                  No more confirmations
+            if lineDivider is False and (i - 1) == dbEvents[eventId]['players'] or l['emoji'] is None:
+                txt += '\n✄┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈'
+                lineDivider = True
 
             # next line on the list
             if l['bkpNickname'] is None:
@@ -313,47 +312,47 @@ def generateListText(eventId:int):
 
     return txt
 
-def generateCutOffAlert(eventId:int):
+def generate_cutoff_alert(eventId:int):
 
-    membersToTag = dict()    # {chatId: [bkpNickname_0, bkpNickname_0]}
+    members_to_tag = {}    # {chatId: [bkpNickname_0, bkpNickname_0]}
 
     # get user from LIST with status ON_LIST that haven't confirmed yet
     for m in dbEvents[eventId]['list']:
         if dbEvents[eventId]['list'][m]['status'] == 'ON_LIST' and dbEvents[eventId]['list'][m]['emoji'] is None:
-            membersToTag[m] = list()
+            members_to_tag[m] = []
 
     # get user from LIST with status ON_LIST that haven't confirmed yet
     for m in dbEvents[eventId]['bkp']:
         for bkp in dbEvents[eventId]['bkp'][m]:
             if dbEvents[eventId]['bkp'][m][bkp]['status'] == 'ON_LIST' and dbEvents[eventId]['bkp'][m][bkp]['emoji'] is None:
-                if m not in membersToTag:
-                    membersToTag[m] = list()
-                membersToTag[m].append(bkp)
+                if m not in members_to_tag:
+                    members_to_tag[m] = []
+                members_to_tag[m].append(bkp)
 
     # Format cutoff msg
-    cutoffMsg = phrases.cutoffIn2Hrs()
+    cutoffMsg = phrases.cutoff_in_2_hrs()
 
-    for m in membersToTag:
-        cutoffMsg += f'\n{getUserHTMLTag(m)}'
-        if membersToTag[m]:
-            cutoffMsg += f' ({', '.join(membersToTag[m])})'
+    for member_chat_id, member_bkp_list in members_to_tag.items():
+        cutoffMsg += f'\n{get_user_html_tag(member_chat_id)}'
+        if member_bkp_list:
+            cutoffMsg += f' ({', '.join(member_bkp_list)})'
 
     return cutoffMsg
 
-async def sendBotMsg(bot:Bot, text:str, chatId:int=TELEGRAM_BEACH_GROUP_ID, messageThreadId:int=TELEGRAM_LIST_TOPIC_ID):
+async def send_bot_msg(bot:Bot, text:str, chatId:int=TELEGRAM_BEACH_GROUP_ID, messageThreadId:int=TELEGRAM_LIST_TOPIC_ID):
 
     await bot.send_message(chat_id=chatId, message_thread_id=messageThreadId, text=text, parse_mode=ParseMode.HTML)
 
-def getUserHTMLTag(userId:int):
+def get_user_html_tag(userId:int):
 
     return f'<a href="tg://user?id={userId}">{dbMembers[userId]['nickname']}</a>'
 
-def clearTelegramApplicationJobQueue(application: Application):
+def clear_telegram_application_job_queue(application: Application):
 
     for job in application.job_queue.jobs():
         job.schedule_removal()
 
-def appendMessageToLogFile(fileName, msg, newLineSeparator='\n'):
+def append_message_to_log_file(fileName, msg, newLineSeparator='\n'):
 
     with open(f'logs/{fileName}_{datetime.now().strftime('%Y%m%d')}.txt', "a") as f:
         f.write(f'{datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")} {msg}{newLineSeparator}')
@@ -441,4 +440,4 @@ def build_volleyball_tree_png(rows, output_file):
             for uid in ids:
                 s.node(uid)
 
-    out_path = g.render(output_file, cleanup=True)
+    g.render(output_file, cleanup=True)

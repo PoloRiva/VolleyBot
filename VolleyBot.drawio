@@ -95,7 +95,7 @@
         <mxCell id="ZewcdgPnLVk2RvVIQbtE-20" value="askNewNickname" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
           <mxGeometry x="760" y="-670" width="120" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="ZewcdgPnLVk2RvVIQbtE-22" value="changeMemberNickname" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+        <mxCell id="ZewcdgPnLVk2RvVIQbtE-22" value="change_member_nickname" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
           <mxGeometry x="960" y="-670" width="150" height="20" as="geometry" />
         </mxCell>
         <mxCell id="ZewcdgPnLVk2RvVIQbtE-45" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="ZewcdgPnLVk2RvVIQbtE-25" target="ZewcdgPnLVk2RvVIQbtE-44" edge="1">
@@ -141,7 +141,7 @@
         <mxCell id="ZewcdgPnLVk2RvVIQbtE-39" value="CONFIRM bkp" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;strokeColor=#666666;fillColor=#f5f5f5;fontColor=#333333;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
           <mxGeometry x="560" y="-760" width="90" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="ZewcdgPnLVk2RvVIQbtE-44" value="confirmMember" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
+        <mxCell id="ZewcdgPnLVk2RvVIQbtE-44" value="confirm_member" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" parent="WIyWlLk6GJQsqaUBKTNV-1" vertex="1">
           <mxGeometry x="960" y="-790" width="120" height="20" as="geometry" />
         </mxCell>
         <mxCell id="ZewcdgPnLVk2RvVIQbtE-51" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="WIyWlLk6GJQsqaUBKTNV-1" source="ZewcdgPnLVk2RvVIQbtE-47" target="ZewcdgPnLVk2RvVIQbtE-63" edge="1">

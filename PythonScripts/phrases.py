@@ -46,9 +46,7 @@ ONLY_ADMINS = (
 )
 
 UNKNOWN_COMMAND = (
-    "Sorry, I don't know what you mean by that",
-    "I don't recognize that command",
-    "Excuse me, were you talking to me ? Because I don't know that command",
+    "I don't recognize that command 🛟",
 )
 
 def welcome(userName):
@@ -60,13 +58,13 @@ def goodbye(userName):
 def haveFun(hours_mins):
     return f'Remember the game starts at {hours_mins} ☝️\n{random.choice(HAVE_FUN)}'
 
-def rememberToPay():
+def remember_to_pay():
     return random.choice(REMEMBER_TO_PAY)
 
-def cutoffIn2Hrs():
+def cutoff_in_2_hrs():
     return f'Cutoff in 2 hrs, {random.choice(CUTOFF_IN_2HRS)}'
 
-def noGamesAvailable(userName):
+def no_games_available(userName):
     return random.choice(NO_GAMES).format(userName=userName)
 
 def changeNickname(oldNickname, newNickname):
@@ -78,5 +76,5 @@ def complaint():
 def onlyAdmins():
     return f'{random.choice(ONLY_ADMINS)}'
 
-def unknownCommand():
+def unknown_command():
     return f'{random.choice(UNKNOWN_COMMAND).format()}\nUse /help for a list of available commands.'

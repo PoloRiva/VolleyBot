@@ -1,6 +1,6 @@
-# Python == 3.12
+# Python == 3.14
 
-psycopg[binary,pool] == 3.3.2
-python-telegram-bot[job-queue] == 22.5
+psycopg[binary,pool] == 3.3.4
+python-telegram-bot[job-queue] == 22.8
 emoji == 2.15.0
 graphviz == 0.21

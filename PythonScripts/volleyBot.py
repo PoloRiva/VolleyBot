@@ -4,19 +4,19 @@ from datetime import datetime, timedelta
 from telegram import Update, ChatMember
 import traceback
 import argparse
-import asyncio
 import emoji
 import shlex
+import anyio
 import json
 
 import dbTools, phrases
 from tools import CommandNotValid, ParserError
-from tools import getEventId, generateListText, generateBotHelp, generateAdminBotHelp, sendBotMsg, clearTelegramApplicationJobQueue, generateCutOffAlert, getUserHTMLTag, appendMessageToLogFile, build_volleyball_tree_png
+from tools import get_event_id, generate_list_text, generate_bot_help, generate_admin_bot_help, send_bot_msg, clear_telegram_application_job_queue, generate_cutoff_alert, get_user_html_tag, append_message_to_log_file, build_volleyball_tree_png
 from tools import TELEGRAM_TOKEN, TELEGRAM_BEACH_GROUP_ID, TELEGRAM_LIST_TOPIC_ID, TELEGRAM_PAYEE_CHAT_IDS, TELEGRAM_API_OWNER, COMMANDS_MAP
 from tools import volleyBotParser, volleyBotAdminParser, dbMembers, dbEvents, indianTakeawayMenuOptions
 
 async def post_init_info(application:Application):
-    # This runs after the bot is initialized but before it starts polling# This runs after the bot is initialized but before it starts polling
+    # This runs after the bot is initialized but before it starts polling
     bot_info = await application.bot.get_me()
     print(f"--- Success! @{bot_info.username} is now online ---")
     print("Listening for messages...")
@@ -33,19 +33,19 @@ async def errorHandler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     trace_stack = "".join(trace_list)
 
     # Append the exception error trace to the file
-    appendMessageToLogFile('MAIN_EXCEPTION', f'traceStack:\n{trace_stack}', newLineSeparator=f'\n{'o':{'.^'}{80}}\n')
+    append_message_to_log_file('MAIN_EXCEPTION', f'traceStack:\n{trace_stack}', newLineSeparator=f'\n{'o':{'.^'}{80}}\n')
 
     # Lastly, send a Telegram msg to the owner
-    await sendBotMsg(context.application.bot, f'Error {type(context.error).__name__}\ncheck log files', chatId=TELEGRAM_API_OWNER, messageThreadId=None)
+    await send_bot_msg(context.application.bot, f'Error {type(context.error).__name__}\ncheck log files', chatId=TELEGRAM_API_OWNER, messageThreadId=None)
 
-def reloadTelegramBotServer(application: Application):
+def reload_telegram_bot_server(application: Application):
 
     # Clear JobQueue | Update any events on the db | sync the db locally
-    clearTelegramApplicationJobQueue(application)
-    dbTools.checkEventStatus()
-    dbTools.syncDbLocally()
+    clear_telegram_application_job_queue(application)
+    dbTools.check_event_status()
+    dbTools.sync_db_locally()
 
-async def taskEventEvolution(context: CallbackContext):
+async def task_event_evolution(context: CallbackContext):
 
     action = context.job.data['action']
 
@@ -53,10 +53,10 @@ async def taskEventEvolution(context: CallbackContext):
     if action == 'reSchedule':
 
         if context.job.data['run']:
-            reScheduleFutureEvents(context.application)
+            reschedule_future_events(context.application)
         # Recursion call to schedule next syncDb
         now = datetime.now()
-        context.application.job_queue.run_once(taskEventEvolution, when=((now.replace(hour=2, minute=0, second=0, microsecond=0) + timedelta(days=1)) - now), data={'action': 'reSchedule', 'run': True})
+        context.application.job_queue.run_once(task_event_evolution, when=((now.replace(hour=2, minute=0, second=0, microsecond=0) + timedelta(days=1)) - now), data={'action': 'reSchedule', 'run': True})
 
     # --------------------------------- SEND_MSG --------------------------------- #
     elif action == 'sendMsg':
@@ -64,7 +64,7 @@ async def taskEventEvolution(context: CallbackContext):
         msgType = context.job.data['msgType']
 
         if msgType == 'CUTOFF_IN_2HRS':
-            await sendBotMsg(context.application.bot, generateCutOffAlert(context.job.data['eventId']))
+            await send_bot_msg(context.application.bot, generate_cutoff_alert(context.job.data['eventId']))
 
     # ----------------------------- NEW_EVENT_STATUS ----------------------------- #
     elif action == 'newEventStatus':
@@ -73,65 +73,64 @@ async def taskEventEvolution(context: CallbackContext):
         newStatus = context.job.data['newStatus']
 
         # Update the status of the event
-        dbTools.updateEventStatus(eventId, newStatus)
+        dbTools.update_event_status(eventId, newStatus)
 
         if newStatus == 'ONLINE':
             # First add payee on the list
             for pChatId in TELEGRAM_PAYEE_CHAT_IDS:
-                if pChatId in dbMembers:
-                    if pChatId not in dbEvents[eventId]['list']:
-                        dbTools.addMemberToList(datetime.now(), eventId, pChatId)
+                if pChatId in dbMembers and pChatId not in dbEvents[eventId]['list']:
+                    dbTools.add_member_to_list(datetime.now(), eventId, pChatId)
 
-            await sendBotMsg(context.application.bot, generateListText(eventId))
+            await send_bot_msg(context.application.bot, generate_list_text(eventId))
             # next schedule is being CUTOFF
-            context.application.job_queue.run_once(taskEventEvolution, when=(dbEvents[eventId]['cutoff']-datetime.now()), data={'action': 'newEventStatus', 'newStatus': 'CUTOFF', 'eventId': eventId})
+            context.application.job_queue.run_once(task_event_evolution, when=(dbEvents[eventId]['cutoff']-datetime.now()), data={'action': 'newEventStatus', 'newStatus': 'CUTOFF', 'eventId': eventId})
 
         elif newStatus == 'CUTOFF':
-            dbTools.cutoffEvent(eventId)
-            dbTools.syncDbLocally()
-            await sendBotMsg(context.application.bot, generateListText(eventId))
+            dbTools.cutoff_event(eventId)
+            dbTools.sync_db_locally()
+            await send_bot_msg(context.application.bot, generate_list_text(eventId))
             # next schedule is being PLAYED, 2 hours before starting the game
-            context.application.job_queue.run_once(taskEventEvolution, when=((dbEvents[eventId]['start'] - timedelta(hours=2))-datetime.now()), data={'action': 'newEventStatus', 'newStatus': 'PLAYED', 'eventId': eventId})
+            context.application.job_queue.run_once(task_event_evolution, when=((dbEvents[eventId]['start'] - timedelta(hours=2))-datetime.now()), data={'action': 'newEventStatus', 'newStatus': 'PLAYED', 'eventId': eventId})
 
         elif newStatus == 'PLAYED':
-            await sendBotMsg(context.application.bot, phrases.haveFun(hours_mins=dbEvents[eventId]['start'].strftime('%H:%M')))
+            await send_bot_msg(context.application.bot, phrases.haveFun(hours_mins=dbEvents[eventId]['start'].strftime('%H:%M')))
             # next schedule is being DONE, at 10 AM the morning of the day after the start of the game
-            context.application.job_queue.run_once(taskEventEvolution, when=((dbEvents[eventId]['start'] + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)-datetime.now()), data={'action': 'newEventStatus', 'newStatus': 'DONE', 'eventId': eventId})
+            context.application.job_queue.run_once(task_event_evolution, when=((dbEvents[eventId]['start'] + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)-datetime.now()), data={'action': 'newEventStatus', 'newStatus': 'DONE', 'eventId': eventId})
 
         elif newStatus == 'DONE':
-            await sendBotMsg(context.application.bot, phrases.rememberToPay())
+            await send_bot_msg(context.application.bot, phrases.remember_to_pay())
 
-def reScheduleFutureEvents(application: Application):
+def reschedule_future_events(application: Application):
 
-    reloadTelegramBotServer(application)
+    reload_telegram_bot_server(application)
 
     # schedule next SyncDB
-    application.job_queue.run_once(taskEventEvolution, when=timedelta(seconds=5), data={'action': 'reSchedule', 'run': False})
+    application.job_queue.run_once(task_event_evolution, when=timedelta(seconds=5), data={'action': 'reSchedule', 'run': False})
 
     # Schedule next events status change
     for eventId in dbEvents:
         if dbEvents[eventId]['status'] == 'NEW':
             # Event next step is to be ONLINE
-            application.job_queue.run_once(taskEventEvolution, when=(dbEvents[eventId]['online']-datetime.now()), data={'action': 'newEventStatus', 'newStatus': 'ONLINE', 'eventId': eventId})
+            application.job_queue.run_once(task_event_evolution, when=(dbEvents[eventId]['online']-datetime.now()), data={'action': 'newEventStatus', 'newStatus': 'ONLINE', 'eventId': eventId})
 
         elif dbEvents[eventId]['status'] == 'ONLINE':
             # Event next step is to be CUTOFF
-            application.job_queue.run_once(taskEventEvolution, when=(dbEvents[eventId]['cutoff']-datetime.now()), data={'action': 'newEventStatus', 'newStatus': 'CUTOFF', 'eventId': eventId})
+            application.job_queue.run_once(task_event_evolution, when=(dbEvents[eventId]['cutoff']-datetime.now()), data={'action': 'newEventStatus', 'newStatus': 'CUTOFF', 'eventId': eventId})
             # Remember everyone CUTOFF 2 hrs before
-            application.job_queue.run_once(taskEventEvolution, when=((dbEvents[eventId]['cutoff'] - timedelta(hours=2))-datetime.now()), data={'action': 'sendMsg', 'msgType': 'CUTOFF_IN_2HRS', 'eventId': eventId})
+            application.job_queue.run_once(task_event_evolution, when=((dbEvents[eventId]['cutoff'] - timedelta(hours=2))-datetime.now()), data={'action': 'sendMsg', 'msgType': 'CUTOFF_IN_2HRS', 'eventId': eventId})
 
         elif dbEvents[eventId]['status'] == 'CUTOFF':
             # Run CUTOFF just in case now
-            dbTools.cutoffEvent(eventId)
-            dbTools.syncDbLocally()
+            dbTools.cutoff_event(eventId)
+            dbTools.sync_db_locally()
             # Event next step is to be PLAYED
-            application.job_queue.run_once(taskEventEvolution, when=((dbEvents[eventId]['start'] - timedelta(hours=2))-datetime.now()), data={'action': 'newEventStatus', 'newStatus': 'PLAYED', 'eventId': eventId})
+            application.job_queue.run_once(task_event_evolution, when=((dbEvents[eventId]['start'] - timedelta(hours=2))-datetime.now()), data={'action': 'newEventStatus', 'newStatus': 'PLAYED', 'eventId': eventId})
 
         elif dbEvents[eventId]['status'] == 'PLAYED':
             # Event next step is to be DONE, at 10 AM the morning after the start of the game
-            application.job_queue.run_once(taskEventEvolution, when=((dbEvents[eventId]['start'] + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)-datetime.now()), data={'action': 'newEventStatus', 'newStatus': 'DONE', 'eventId': eventId})
+            application.job_queue.run_once(task_event_evolution, when=((dbEvents[eventId]['start'] + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)-datetime.now()), data={'action': 'newEventStatus', 'newStatus': 'DONE', 'eventId': eventId})
 
-async def handlerMembersUpdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handler_members_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # First check that this is the Beach Volley group
     if update.chat_member.chat.id == TELEGRAM_BEACH_GROUP_ID:
@@ -139,26 +138,26 @@ async def handlerMembersUpdate(update: Update, context: ContextTypes.DEFAULT_TYP
 
         if update.chat_member.new_chat_member.status == ChatMember.MEMBER:
             # User added to the group
-            dbTools.addOrUpdateUser(user=update.chat_member.new_chat_member.user)
-            await sendBotMsg(context.application.bot, phrases.welcome(userName=getUserHTMLTag(user.id)))
+            dbTools.add_or_update_user(user=update.chat_member.new_chat_member.user)
+            await send_bot_msg(context.application.bot, phrases.welcome(userName=get_user_html_tag(user.id)))
 
         elif update.chat_member.new_chat_member.status == ChatMember.ADMINISTRATOR:
             # User promoted to admin
-            dbTools.changeMemberRank(user=user, rank='Admin')
+            dbTools.change_member_rank(user=user, rank='Admin')
 
         elif update.chat_member.new_chat_member.status == ChatMember.BANNED:
             # User removed from the group
-            await sendBotMsg(context.application.bot, phrases.goodbye(userName=getUserHTMLTag(user.id)))
-            dbTools.changeMemberRank(user=user, rank='Banned')
+            await send_bot_msg(context.application.bot, phrases.goodbye(userName=get_user_html_tag(user.id)))
+            dbTools.change_member_rank(user=user, rank='Banned')
 
 async def botCommand_sendlist(update: Update, context: ContextTypes.DEFAULT_TYPE, args):
 
-    eventId = getEventId(update, args.eventId)
+    eventId = get_event_id(update, args.eventId)
 
     if args.sync:
-        dbTools.syncDbLocally()
+        dbTools.sync_db_locally()
 
-    await sendBotMsg(context.application.bot, generateListText(eventId))
+    await send_bot_msg(context.application.bot, generate_list_text(eventId))
 
 async def botCommand_localdb(update: Update, context: ContextTypes.DEFAULT_TYPE, args):
 
@@ -168,11 +167,11 @@ async def botCommand_localdb(update: Update, context: ContextTypes.DEFAULT_TYPE,
 
     chunks = [localdb[i:i + MAX_LENGTH] for i in range(0, len(localdb), MAX_LENGTH)]
     for c in chunks:
-        await sendBotMsg(context.application.bot, f'<code>{c}</code>', chatId=TELEGRAM_API_OWNER, messageThreadId=None)
+        await send_bot_msg(context.application.bot, f'<code>{c}</code>', chatId=TELEGRAM_API_OWNER, messageThreadId=None)
 
 async def botCommand_sendmsg(update: Update, context: ContextTypes.DEFAULT_TYPE, args):
 
-    await sendBotMsg(context.application.bot, args.msg)
+    await send_bot_msg(context.application.bot, args.msg)
 
 async def botCommand_addevent(update: Update, context: ContextTypes.DEFAULT_TYPE, args):
 
@@ -182,15 +181,15 @@ async def botCommand_addevent(update: Update, context: ContextTypes.DEFAULT_TYPE
         # The string doesn't match the format
         raise CommandNotValid('The date needs to follow the format yyyy-mm-dd')
 
-    dbTools.addNewEvent(startDate)
-    await sendBotMsg(context.application.bot, 'new event added', chatId=TELEGRAM_API_OWNER, messageThreadId=None)
+    dbTools.add_new_event(startDate)
+    await send_bot_msg(context.application.bot, 'new event added', chatId=TELEGRAM_API_OWNER, messageThreadId=None)
 
 async def botCommand_reload(update: Update, context: ContextTypes.DEFAULT_TYPE, args):
 
-    reScheduleFutureEvents(context.application)
-    await sendBotMsg(context.application.bot, 'Reload executed', chatId=TELEGRAM_API_OWNER, messageThreadId=None)
+    reschedule_future_events(context.application)
+    await send_bot_msg(context.application.bot, 'Reload executed', chatId=TELEGRAM_API_OWNER, messageThreadId=None)
 
-async def handlerAdminsBeachVolleyCommands(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handler_admins_beach_volley_commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Check if the chatId is from the API owner
     chatId = update.effective_user.id
@@ -222,31 +221,31 @@ async def handlerAdminsBeachVolleyCommands(update: Update, context: ContextTypes
             await botCommand_reload(update, context, args)
 
         elif args.command == '/help':
-            await sendBotMsg(context.application.bot, generateAdminBotHelp(), chatId=TELEGRAM_API_OWNER, messageThreadId=None)
+            await send_bot_msg(context.application.bot, generate_admin_bot_help(), chatId=TELEGRAM_API_OWNER, messageThreadId=None)
 
         else:
-            await sendBotMsg(context.application.bot, 'Unknown command. Use /help for a list of available commands.', chatId=TELEGRAM_API_OWNER, messageThreadId=None)
+            await send_bot_msg(context.application.bot, 'Unknown command. Use /help for a list of available commands.', chatId=TELEGRAM_API_OWNER, messageThreadId=None)
 
     except CommandNotValid as e:
-        await sendBotMsg(context.application.bot, e.response, chatId=TELEGRAM_API_OWNER, messageThreadId=None)
+        await send_bot_msg(context.application.bot, e.response, chatId=TELEGRAM_API_OWNER, messageThreadId=None)
 
-    except ParserError as e:
-        await sendBotMsg(context.application.bot, 'Your command format is wrong', chatId=TELEGRAM_API_OWNER, messageThreadId=None)
+    except ParserError:
+        await send_bot_msg(context.application.bot, 'Your command format is wrong', chatId=TELEGRAM_API_OWNER, messageThreadId=None)
 
 async def botCommand_addme(update: Update, context: ContextTypes.DEFAULT_TYPE, msgTime:datetime, chatId:int, args:argparse.Namespace):
 
-    eventId = getEventId(update, args.eventId)
+    eventId = get_event_id(update, args.eventId)
 
     # Check if the player is already in the list as ON_LIST
     if dbEvents[eventId]['list'].get(chatId, {}).get('status', '-1') == 'ON_LIST':
         raise CommandNotValid('You are already on the list !')
 
-    dbTools.addMemberToList(msgTime, eventId, chatId)
-    await sendBotMsg(context.application.bot, generateListText(eventId))
+    dbTools.add_member_to_list(msgTime, eventId, chatId)
+    await send_bot_msg(context.application.bot, generate_list_text(eventId))
 
 async def botCommand_add(update: Update, context: ContextTypes.DEFAULT_TYPE, msgTime:datetime, chatId:int, args:argparse.Namespace):
 
-    eventId = getEventId(update, args.eventId)
+    eventId = get_event_id(update, args.eventId)
 
     # ------------------------ Another user was mentioned ------------------------ #
     if args.mention:
@@ -276,7 +275,7 @@ async def botCommand_add(update: Update, context: ContextTypes.DEFAULT_TYPE, msg
         if dbEvents[eventId]['list'].get(mention_chat_id, {}).get('status', '-1') == 'ON_LIST':
             raise CommandNotValid('That player is already on the list !')
 
-        dbTools.addMemberToList(msgTime, eventId, mention_chat_id)
+        dbTools.add_member_to_list(msgTime, eventId, mention_chat_id)
 
     # -------------- No other user was mentioned, consider self user ------------- #
     else:
@@ -284,13 +283,13 @@ async def botCommand_add(update: Update, context: ContextTypes.DEFAULT_TYPE, msg
         if dbEvents[eventId]['list'].get(chatId, {}).get('status', '-1') == 'ON_LIST':
             raise CommandNotValid('You are already on the list !')
 
-        dbTools.addMemberToList(msgTime, eventId, chatId)
+        dbTools.add_member_to_list(msgTime, eventId, chatId)
 
-    await sendBotMsg(context.application.bot, generateListText(eventId))
+    await send_bot_msg(context.application.bot, generate_list_text(eventId))
 
 async def botCommand_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE, msgTime: datetime, chatId:int, args:argparse.Namespace):
 
-    eventId = getEventId(update, args.eventId)
+    eventId = get_event_id(update, args.eventId)
 
     # Checks if the player is present on the list, if present it should not be status 'REMOVED'
     if not dbEvents[eventId]['list'].get(chatId, {}).get('status', '-1') == 'ON_LIST':
@@ -303,23 +302,23 @@ async def botCommand_confirm(update: Update, context: ContextTypes.DEFAULT_TYPE,
     if emoji.is_emoji(args.emoji) is False:
         raise CommandNotValid(f'{args.emoji} is not an emoji !')
 
-    dbTools.confirmMember(msgTime, eventId, chatId, args.emoji, dbEvents[eventId]['status'] == 'CUTOFF')
-    await sendBotMsg(context.application.bot, generateListText(eventId))
+    dbTools.confirm_member(msgTime, eventId, chatId, args.emoji, dbEvents[eventId]['status'] == 'CUTOFF')
+    await send_bot_msg(context.application.bot, generate_list_text(eventId))
 
 async def botCommand_remove(update: Update, context: ContextTypes.DEFAULT_TYPE, msgTime: datetime, chatId:int, args:argparse.Namespace):
 
-    eventId = getEventId(update, args.eventId)
+    eventId = get_event_id(update, args.eventId)
 
     # Checks if the player is even present on the list
     if not dbEvents[eventId]['list'].get(chatId, {}).get('status', '-1') == 'ON_LIST':
         raise CommandNotValid('You are not even on the list !')
 
-    dbTools.removeMemberFromList(msgTime, eventId, chatId)
-    await sendBotMsg(context.application.bot, generateListText(eventId))
+    dbTools.remove_member_from_list(msgTime, eventId, chatId)
+    await send_bot_msg(context.application.bot, generate_list_text(eventId))
 
 async def botCommand_addbkp(update: Update, context: ContextTypes.DEFAULT_TYPE, msgTime:datetime, chatId:int, args:argparse.Namespace):
 
-    eventId = getEventId(update, args.eventId)
+    eventId = get_event_id(update, args.eventId)
 
     if args.name is None:
         raise CommandNotValid('You forgot to send the bkp name')
@@ -329,12 +328,12 @@ async def botCommand_addbkp(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     if bkpStatus == 'ON_LIST':
         raise CommandNotValid(f'Your bkp "{args.name}" is already on the list !')
 
-    dbTools.addMemberToList(msgTime, eventId, chatId, bkpNickname=args.name)
-    await sendBotMsg(context.application.bot, generateListText(eventId))
+    dbTools.add_member_to_list(msgTime, eventId, chatId, bkpNickname=args.name)
+    await send_bot_msg(context.application.bot, generate_list_text(eventId))
 
 async def botCommand_confirmbkp(update: Update, context: ContextTypes.DEFAULT_TYPE, msgTime:datetime, chatId:int, args:argparse.Namespace):
 
-    eventId = getEventId(update, args.eventId)
+    eventId = get_event_id(update, args.eventId)
 
     if args.name is None:
         raise CommandNotValid('You forgot to send the bkp name')
@@ -348,12 +347,12 @@ async def botCommand_confirmbkp(update: Update, context: ContextTypes.DEFAULT_TY
     if args.name not in dbEvents[eventId]['bkp'].get(chatId, {}):
         raise CommandNotValid('''You don't have this bkp on the list''')
 
-    dbTools.confirmMember(msgTime, eventId, chatId, args.emoji, dbEvents[eventId]['status'] == 'CUTOFF', args.name)
-    await sendBotMsg(context.application.bot, generateListText(eventId))
+    dbTools.confirm_member(msgTime, eventId, chatId, args.emoji, dbEvents[eventId]['status'] == 'CUTOFF', args.name)
+    await send_bot_msg(context.application.bot, generate_list_text(eventId))
 
 async def botCommand_removebkp(update: Update, context: ContextTypes.DEFAULT_TYPE, msgTime:datetime, chatId:int, args:argparse.Namespace):
 
-    eventId = getEventId(update, args.eventId)
+    eventId = get_event_id(update, args.eventId)
 
     if args.name is None:
         raise CommandNotValid('You forgot to send the bkp name')
@@ -361,8 +360,8 @@ async def botCommand_removebkp(update: Update, context: ContextTypes.DEFAULT_TYP
     if dbEvents[eventId]['bkp'].get(chatId, {}).get(args.name, {}).get('status', 'REMOVED') == 'REMOVED':
         raise CommandNotValid(f'''You don't have any "{args.name}" as bkp on the list''')
 
-    dbTools.removeMemberFromList(msgTime, eventId, chatId, args.name)
-    await sendBotMsg(context.application.bot, generateListText(eventId))
+    dbTools.remove_member_from_list(msgTime, eventId, chatId, args.name)
+    await send_bot_msg(context.application.bot, generate_list_text(eventId))
 
 async def botCommand_changenickname(update: Update, context: ContextTypes.DEFAULT_TYPE, msgTime:datetime, chatId:int, args):
 
@@ -376,15 +375,15 @@ async def botCommand_changenickname(update: Update, context: ContextTypes.DEFAUL
         raise CommandNotValid('Your nickname is too long!')
 
     oldNickname = dbMembers[chatId]['nickname']
-    dbTools.changeMemberNickname(msgTime, chatId, nickname)
+    dbTools.change_member_nickname(msgTime, chatId, nickname)
 
-    await sendBotMsg(context.application.bot, phrases.changeNickname(oldNickname, nickname))
+    await send_bot_msg(context.application.bot, phrases.changeNickname(oldNickname, nickname))
 
 async def botCommand_stats(update: Update, context: ContextTypes.DEFAULT_TYPE, msgTime:datetime, chatId:int, args):
 
-    stats = dbTools.generateMemberStats(update.effective_user)
+    stats = dbTools.generate_member_stats(update.effective_user)
 
-    await sendBotMsg(context.application.bot, stats)
+    await send_bot_msg(context.application.bot, stats)
 
 async def botCommand_complaint(update: Update, context: ContextTypes.DEFAULT_TYPE, msgTime:datetime, chatId:int, args):
 
@@ -393,9 +392,9 @@ async def botCommand_complaint(update: Update, context: ContextTypes.DEFAULT_TYP
     if not complaint_text:
         raise CommandNotValid('You forgot to send the complaint text')
 
-    await sendBotMsg(context.application.bot, phrases.complaint())
+    await send_bot_msg(context.application.bot, phrases.complaint())
 
-    with open('art/refund_512.png', 'rb') as photoFile:
+    async with anyio.open_file('art/refund_512.png', 'rb') as photoFile:
         await context.application.bot.send_photo(chat_id=TELEGRAM_BEACH_GROUP_ID, message_thread_id=TELEGRAM_LIST_TOPIC_ID, photo=photoFile, parse_mode=ParseMode.HTML)
 
 async def botCommand_indianpoll(update: Update, context: ContextTypes.DEFAULT_TYPE, msgTime:datetime, chatId:int, args):
@@ -422,7 +421,7 @@ async def botCommand_indianpoll(update: Update, context: ContextTypes.DEFAULT_TY
         open_period=600,
     )
 
-    await sendBotMsg(context.application.bot, 'Selec the dishes you want to order and VOTE\n<i>The polls will close in 10 minutes</i> ☝️')
+    await send_bot_msg(context.application.bot, 'Selec the dishes you want to order and VOTE\n<i>The polls will close in 10 minutes</i> ☝️')
 
 async def botCommand_volleyballtree(update: Update, context: ContextTypes.DEFAULT_TYPE, msgTime:datetime, chatId:int, args):
 
@@ -432,14 +431,14 @@ async def botCommand_volleyballtree(update: Update, context: ContextTypes.DEFAUL
     # Generate the tree png
     build_volleyball_tree_png(rows, 'volleyball_tree')
 
-    with open('volleyball_tree.pdf', 'rb') as tree_file:
+    async with anyio.open_file('volleyball_tree.pdf', 'rb') as tree_file:
         await context.application.bot.send_document(
             chat_id=TELEGRAM_BEACH_GROUP_ID,
             message_thread_id=TELEGRAM_LIST_TOPIC_ID,
             document=tree_file
         )
 
-async def parseBotCommand(update: Update, context: ContextTypes.DEFAULT_TYPE, msgTime: datetime, chatId:int, commandString:str):
+async def parse_bot_command(update: Update, context: ContextTypes.DEFAULT_TYPE, msgTime: datetime, chatId:int, commandString:str):
 
     # Split the command string into a list of arguments
     args_list = shlex.split(commandString)
@@ -483,46 +482,46 @@ async def parseBotCommand(update: Update, context: ContextTypes.DEFAULT_TYPE, ms
             await botCommand_volleyballtree(update, context, msgTime, chatId, args)
 
         elif args.command == '/help':
-            await sendBotMsg(context.application.bot, generateBotHelp())
+            await send_bot_msg(context.application.bot, generate_bot_help())
 
         else:
-            await sendBotMsg(context.application.bot, phrases.unknownCommand())
+            await send_bot_msg(context.application.bot, phrases.unknown_command())
 
     except CommandNotValid as e:
-        await sendBotMsg(context.application.bot, e.response)
+        await send_bot_msg(context.application.bot, e.response)
 
-    except ParserError as e:
+    except ParserError:
         if args_list[0] in COMMANDS_MAP:
-            await sendBotMsg(context.application.bot, f'Your command format is wrong\n{generateBotHelp(args_list[0])}')
+            await send_bot_msg(context.application.bot, f'Your command format is wrong\n{generate_bot_help(args_list[0])}')
         else:
-            await sendBotMsg(context.application.bot, phrases.unknownCommand())
+            await send_bot_msg(context.application.bot, phrases.unknown_command())
 
-async def handlerBeachVolleyCommands(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handler_beach_volley_commands(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ''' This function will be called for every text message in the specified topic '''
 
     # set msgTime in case an async code runs between now and the orderDatetime
     msgTime = datetime.now()
 
     # Filtering topic to only consider VolleyBot topic commands
-    topicId = update.effective_message.message_thread_id
-    if topicId != TELEGRAM_LIST_TOPIC_ID:
-        # This is not comming from VolleyBot topic, ignore
-        return
+    # topicId = update.effective_message.message_thread_id
+    # if topicId != TELEGRAM_LIST_TOPIC_ID:
+    #     # This is not comming from VolleyBot topic, ignore
+    #     return
 
     # Getting the userId, if not present the user should be added (db and locally)
     chatId = update.effective_user.id
     if chatId not in dbMembers:
-        dbTools.addOrUpdateUser(update.effective_user)
+        dbTools.add_or_update_user(update.effective_user)
 
     # Checking if the username of the user has changed
     elif update.effective_user.username != dbMembers[chatId].get('username', '-1'):
-        dbTools.changeMemberUsername(msgTime, chatId, update.effective_user.username)
+        dbTools.change_member_username(msgTime, chatId, update.effective_user.username)
 
     messageText = update.effective_message.text.replace(f'@{context.bot.username}', '')
-    dbTools.addCommandLogs(msgTime, chatId, messageText)
+    dbTools.add_command_logs(msgTime, chatId, messageText)
 
     #print(f'[{msgTime}] Received message in topic {topicId} from {chatId}: {messageText}')
-    await parseBotCommand(update, context, msgTime, chatId, messageText)
+    await parse_bot_command(update, context, msgTime, chatId, messageText)
 
 def main():
 
@@ -532,19 +531,19 @@ def main():
     application = Application.builder().token(TELEGRAM_TOKEN).post_init(post_init_info).build()
 
     # Prepare Event tasks
-    reScheduleFutureEvents(application)
+    reschedule_future_events(application)
 
     # manage new/removal of members in the group chat
-    application.add_handler(ChatMemberHandler(handlerMembersUpdate, ChatMemberHandler.CHAT_MEMBER))
+    application.add_handler(ChatMemberHandler(handler_members_update, ChatMemberHandler.CHAT_MEMBER))
 
     # handler for admins commands
-    application.add_handler(MessageHandler(filters.COMMAND & filters.Chat(TELEGRAM_API_OWNER), handlerAdminsBeachVolleyCommands))
+    application.add_handler(MessageHandler(filters.COMMAND & filters.Chat(TELEGRAM_API_OWNER), handler_admins_beach_volley_commands))
 
     # manage command send to the beachvolley group chat, the topic can be filtered inside the handler
-    application.add_handler(MessageHandler(filters.COMMAND & filters.Chat(TELEGRAM_BEACH_GROUP_ID), handlerBeachVolleyCommands))
+    application.add_handler(MessageHandler(filters.COMMAND & filters.Chat(TELEGRAM_BEACH_GROUP_ID), handler_beach_volley_commands))
 
     # add error handler
-    application.add_error_handler(errorHandler) 
+    application.add_error_handler(errorHandler)
 
     # Start the bot
     application.run_polling(allowed_updates=Update.ALL_TYPES)

@@ -1,9 +1,7 @@
 from datetime import datetime, timedelta, date, time
 from telegram import User
-import json
-import html
 
-from tools import createPostgresSQLConnection, dbEvents, dbMembers
+from tools import create_postgreSQL_connection, dbEvents, dbMembers
 
 # dbMembers {
 #   chatId_0: {'nickname': nickname, 'username': username, 'rank': rank},
@@ -37,7 +35,7 @@ from tools import createPostgresSQLConnection, dbEvents, dbMembers
 #       },
 #   }
 
-def checkEventStatus():
+def check_event_status():
 
     sql = '''   UPDATE events
                 SET status = CASE
@@ -57,16 +55,15 @@ def checkEventStatus():
                         OR
                         (status in ('NEW', 'ONLINE', 'CUTOFF', 'PLAYED') AND to_timestamp((startDatetime::DATE+1)::text||' 10:00:00', 'YYYY-MM-DD HH24:mi:ss') <= %(now)s)
                     ) '''
-    with createPostgresSQLConnection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(sql, {'now': datetime.now()})
+    with create_postgreSQL_connection() as conn, conn.cursor() as cur:
+        cur.execute(sql, {'now': datetime.now()})
 
-def syncDbLocally():
+def sync_db_locally():
 
     dbMembers.clear()
     dbEvents.clear()
 
-    with createPostgresSQLConnection() as conn:
+    with create_postgreSQL_connection() as conn:
         # ---------------------------------- Members --------------------------------- #
         sql = ''' SELECT chatId, nickname, username, rank FROM members WHERE rank != 'Banned' '''
         with conn.cursor() as cur:
@@ -79,7 +76,7 @@ def syncDbLocally():
         with conn.cursor() as cur:
             cur.execute(sql)
             for r in cur.fetchall():
-                dbEvents[r[0]] = {'place': r[1], 'start': r[2], 'end': r[3], 'online': r[4], 'cutoff': r[5], 'players': r[6], 'price': r[7], 'status': r[8], 'list': dict(), 'bkp': dict()}
+                dbEvents[r[0]] = {'place': r[1], 'start': r[2], 'end': r[3], 'online': r[4], 'cutoff': r[5], 'players': r[6], 'price': r[7], 'status': r[8], 'list': {}, 'bkp': {}}
 
         # ----------------------------------- Lists ---------------------------------- #
         if dbEvents:
@@ -93,17 +90,17 @@ def syncDbLocally():
                     else:
                         # gose into bkp
                         if r[1] not in dbEvents[r[0]]['bkp']:
-                            dbEvents[r[0]]['bkp'][r[1]] = dict()
+                            dbEvents[r[0]]['bkp'][r[1]] = {}
                         dbEvents[r[0]]['bkp'][r[1]][r[2]] = {'emoji': r[3], 'status': r[5], 'orderDatetime': r[4]}
 
-def updateEventStatus(eventId:int, newStatus:str):
+def update_event_status(eventId:int, newStatus:str):
 
     sql = '''   UPDATE Events
                 SET status = %(newStatus)s,
                     lastUpdateDatetime = %(now)s
                 WHERE id = %(eventId)s '''
 
-    with createPostgresSQLConnection() as conn:
+    with create_postgreSQL_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(sql, {  'eventId': eventId,
                                 'newStatus': newStatus,
@@ -113,7 +110,7 @@ def updateEventStatus(eventId:int, newStatus:str):
     # local
     dbEvents[eventId]['status'] = newStatus
 
-def cutoffEvent(eventId):
+def cutoff_event(eventId):
 
     sql = '''   WITH t AS (
                     SELECT
@@ -135,7 +132,7 @@ def cutoffEvent(eventId):
                 FROM t
                 WHERE l.id = t.id '''
 
-    with createPostgresSQLConnection() as conn:
+    with create_postgreSQL_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(sql, {  'eventId': eventId,
                                 'now': datetime.now()})
@@ -144,13 +141,13 @@ def cutoffEvent(eventId):
 # ---------------------------------------------------------------------------- #
 #                                    Members                                   #
 # ---------------------------------------------------------------------------- #
-def addOrUpdateUser(user: User):
+def add_or_update_user(user: User):
 
     sql = '''   INSERT INTO members (chatId, nickname, username, rank, createDatetime, lastUpdateDatetime)
                 VALUES (%(chatId)s, %(nickname)s, %(username)s, 'Member', %(now)s, %(now)s) ON CONFLICT (chatId) DO
                 UPDATE SET rank = 'Member', lastUpdateDatetime = %(now)s '''
 
-    with createPostgresSQLConnection() as conn:
+    with create_postgreSQL_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(sql, {  'chatId': user.id,
                                 'nickname': user.first_name,
@@ -162,14 +159,14 @@ def addOrUpdateUser(user: User):
     # If the user was banned, the record would not be locally, the nickname would be unsync until the next syncDB call
     dbMembers[user.id] = {'nickname': user.first_name, 'username': user.username, 'rank': 'Member'}
 
-def changeMemberRank(user: User, rank):
+def change_member_rank(user: User, rank):
 
     sql = '''   UPDATE members
                 SET rank = %(rank)s,
                     lastUpdateDatetime = %(now)s
                 WHERE chatId = %(chatId)s '''
 
-    with createPostgresSQLConnection() as conn:
+    with create_postgreSQL_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(sql, {'now': datetime.now(), 'chatId': user.id, 'rank': rank})
 
@@ -182,14 +179,14 @@ def changeMemberRank(user: User, rank):
     else:
         dbMembers[user.id]['rank'] = rank
 
-def changeMemberNickname(msgTime:datetime, chatId:int, newNickname:str):
+def change_member_nickname(msgTime:datetime, chatId:int, newNickname:str):
 
     sql = '''   UPDATE members
                 SET nickname = %(newNickname)s,
                     lastupdatedatetime = %(now)s
                 WHERE chatId = %(chatId)s '''
 
-    with createPostgresSQLConnection() as conn:
+    with create_postgreSQL_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(sql, {  'newNickname': newNickname,
                                 'chatId': chatId,
@@ -199,14 +196,14 @@ def changeMemberNickname(msgTime:datetime, chatId:int, newNickname:str):
     # local
     dbMembers[chatId]['nickname'] = newNickname
 
-def changeMemberUsername(msgTime:datetime, chatId:int, newUsername:str):
+def change_member_username(msgTime:datetime, chatId:int, newUsername:str):
 
     sql = '''   UPDATE members
                 SET username = %(newUsername)s,
                     lastupdatedatetime = %(now)s
                 WHERE chatId = %(chatId)s '''
 
-    with createPostgresSQLConnection() as conn:
+    with create_postgreSQL_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(sql, {  'newUsername': newUsername,
                                 'chatId': chatId,
@@ -219,13 +216,13 @@ def changeMemberUsername(msgTime:datetime, chatId:int, newUsername:str):
 # ---------------------------------------------------------------------------- #
 #                                     Lists                                    #
 # ---------------------------------------------------------------------------- #
-def addMemberToList(msgTime:datetime, eventId:int, chatId:int, bkpNickname:str=None):
+def add_member_to_list(msgTime:datetime, eventId:int, chatId:int, bkpNickname:str|None=None):
 
     sql = '''   INSERT INTO lists (idEvents, idMembers, bkpNickname, createDatetime, orderDatetime, lastUpdateDatetime, status)
                 VALUES (%(eventId)s, %(chatId)s, %(bkpNickname)s, %(msgTime)s, %(msgTime)s, %(msgTime)s, 'ON_LIST')
                 ON CONFLICT (idEvents, idMembers, bkpNickname) DO UPDATE SET status = 'ON_LIST', lastUpdateDatetime = %(msgTime)s, orderDatetime = %(msgTime)s '''
 
-    with createPostgresSQLConnection() as conn:
+    with create_postgreSQL_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(sql, {  'eventId': eventId,
                                 'chatId': chatId,
@@ -256,11 +253,11 @@ def addMemberToList(msgTime:datetime, eventId:int, chatId:int, bkpNickname:str=N
 
             # Add user to the bkp dict if not present
             if chatId not in dbEvents[eventId]['bkp']:
-                dbEvents[eventId]['bkp'][chatId] = dict()
+                dbEvents[eventId]['bkp'][chatId] = {}
 
             dbEvents[eventId]['bkp'][chatId][bkpNickname] = {'emoji': None, 'status': 'ON_LIST', 'orderDatetime': msgTime}
 
-def confirmMember(msgTime:datetime, eventId:int, chatId:int, emojiTxt:str, cutoff:bool, bkpNickname:str=None):
+def confirm_member(msgTime:datetime, eventId:int, chatId:int, emojiTxt:str, cutoff:bool, bkpNickname:str|None=None):
 
     sql = '''   UPDATE lists
                 SET emoji = %(emojiTxt)s,
@@ -274,7 +271,7 @@ def confirmMember(msgTime:datetime, eventId:int, chatId:int, emojiTxt:str, cutof
                     bkpNickname = %(bkpNickname)s
                 ) '''
 
-    with createPostgresSQLConnection() as conn:
+    with create_postgreSQL_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(sql, {  'eventId': eventId,
                                 'chatId': chatId,
@@ -301,7 +298,7 @@ def confirmMember(msgTime:datetime, eventId:int, chatId:int, emojiTxt:str, cutof
             dbEvents[eventId]['bkp'][chatId][bkpNickname]['orderDatetime'] = msgTime
 
 
-def removeMemberFromList(msgTime:datetime, eventId:int, chatId:int, bkpNickname:str=None):
+def remove_member_from_list(msgTime:datetime, eventId:int, chatId:int, bkpNickname:str|None=None):
 
     sql = '''   UPDATE lists
                 SET status = 'REMOVED',
@@ -314,7 +311,7 @@ def removeMemberFromList(msgTime:datetime, eventId:int, chatId:int, bkpNickname:
                     bkpNickname = %(bkpNickname)s
                 ) '''
 
-    with createPostgresSQLConnection() as conn:
+    with create_postgreSQL_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(sql, {  'eventId': eventId,
                                 'chatId': chatId,
@@ -331,46 +328,43 @@ def removeMemberFromList(msgTime:datetime, eventId:int, chatId:int, bkpNickname:
         # remove from bkp
         dbEvents[eventId]['bkp'][chatId][bkpNickname]['status'] = 'REMOVED'
 
-def generateMemberStats(user: User):
+def generate_member_stats(user: User):
 
     sql = '''   SELECT
                     (SELECT createDatetime FROM members WHERE chatId = %(chatId)s) AS createDatetime,
                     count(1) FILTER (WHERE bkpNickname IS NULL) AS noPlayed,
                     count(1) FILTER (WHERE bkpNickname IS NOT NULL) AS noBkpPlayed,
-                    max(e.endDatetime) AS datetimeLastGame,
-                    (SELECT count(1) FROM lists WHERE idMembers = %(chatId)s AND status = 'REMOVED' AND bkpNickname IS NOT NULL AND emoji IS NOT NULL) AS removedWithEmoji
+                    max(e.endDatetime) AS datetimeLastGame
                 FROM lists l
                 JOIN events e ON (e.id = l.idEvents AND e.endDatetime < %(now)s)
                 WHERE l.idMembers = %(chatId)s
                 AND l.status = 'ON_LIST'
                 AND l.emoji IS NOT null '''
 
-    with createPostgresSQLConnection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(sql, {'chatId': user.id, 'now': datetime.now()})
-            statResults = cur.fetchone()
+    with create_postgreSQL_connection() as conn, conn.cursor() as cur:
+        cur.execute(sql, {'chatId': user.id, 'now': datetime.now()})
+        statResults = cur.fetchone()
 
     statText = '<pre>'
     statText += f'Stats for {dbMembers[user.id]['nickname']}\n'
     statText += f'  times played:      {statResults[1]}\n'
     statText += f'  bkps invited:      {statResults[2]}\n'
-    statText += f'  confirm backdown:  {statResults[4]}\n'
     statText += f'  member since:      {statResults[0].strftime("%Y-%m-%d")}\n'
     statText += f'  last game:         {f'{(datetime.now() - statResults[3]).days} days ago' if statResults[3] else 'NA'}'
     statText += '</pre>'
 
     return statText
 
-def addCommandLogs(msgTime: datetime, chatId:int, command:str):
+def add_command_logs(msgTime: datetime, chatId:int, command:str):
 
     sql = ''' INSERT INTO commandLogs (chatId, command, createDatetime) VALUES (%(chatId)s, %(command)s, %(msgTime)s) '''
 
-    with createPostgresSQLConnection() as conn:
+    with create_postgreSQL_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(sql, {'chatId': chatId, 'command': command, 'msgTime': msgTime})
         conn.commit()
 
-def addNewEvent(startDate:date):
+def add_new_event(startDate:date):
 
     sql = ''' INSERT INTO EVENTS (
                 place,
@@ -397,7 +391,7 @@ def addNewEvent(startDate:date):
             )
             RETURNING id '''
 
-    with createPostgresSQLConnection() as conn:
+    with create_postgreSQL_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(sql, {
                 'startDatetime': datetime.combine(startDate, time(11, 30, 0)),
@@ -418,19 +412,18 @@ def addNewEvent(startDate:date):
         'players': 24,
         'price': 202.5,
         'status': 'NEW',
-        'list': dict(),
-        'bkp': dict(),
+        'list': {},
+        'bkp': {},
     }
 
 def get_volley_tree_rows():
 
-    with createPostgresSQLConnection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(''' SELECT
-                                chatId,
-                                nickname,
-                                createDatetime,
-                                idParentMember,
-                                CASE "rank" WHEN 'Banned' THEN false ELSE true END AS isOnline
-                            FROM members ''')
-            return cur.fetchall()
+    with create_postgreSQL_connection() as conn, conn.cursor() as cur:
+        cur.execute(''' SELECT
+                            chatId,
+                            nickname,
+                            createDatetime,
+                            idParentMember,
+                            CASE "rank" WHEN 'Banned' THEN false ELSE true END AS isOnline
+                        FROM members ''')
+        return cur.fetchall()
